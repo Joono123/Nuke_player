@@ -47,7 +47,8 @@ class NP_ListView(QtWidgets.QListView):
         self.setAlternatingRowColors(False)
         self.setFixedWidth(200)
         self.setContentsMargins(5, 5, 5, 30)
-        # self.setSelectionMode(QtWidgets.QListView.ExtendedSelection)
+        self.setSelectionMode(QtWidgets.QListView.NoSelection)
+        self.setFocusPolicy(QtCore.Qt.NoFocus)
         # self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
         self.setStyleSheet(

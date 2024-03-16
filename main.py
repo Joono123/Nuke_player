@@ -48,10 +48,9 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__text_listview = NP_view.NP_ListView()
 
         # 썸네일을 임시 저장할 상대경로 설정
-        self.current_dir = os.path.dirname(__file__)
-        self.thumb_dir = os.path.join(
-            self.current_dir, ".NP_thumbnails"
-        )  # -> 숨김 상태로 생성
+        # self.current_dir = os.path.dirname(__file__)
+        self.home_dir = os.path.expanduser("~")
+        self.thumb_dir = os.path.join(self.home_dir, ".NP_thumbnails")  # -> 숨김 상태로 생성
 
         # 해당 디렉토리가 없을 경우 생성
         self.__NP_util.NP_Utils.make_dir(self.thumb_dir)
@@ -149,7 +148,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__check_viewer.setChecked(True)
 
         # labels
-        label_list = QtWidgets.QLabel("Playlist Viewer")
+        label_list = QtWidgets.QLabel("Selected Playlist")
         label_list.setAlignment(QtCore.Qt.AlignCenter)
         label_list.setFont(font_3)
 
@@ -230,6 +229,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         딕셔너리에 저장 후 각 파일의 썸네일을 추출하여 임시 디렉토리에 저장
         모델에서 데이터를 다시 로드하여 UI를 새로 불러옴
         """
+        self.__lineEdit_debug.setText("파일 로드 중")
         if event.mimeData().hasUrls():
             event.setDropAction(QtCore.Qt.CopyAction)
             urls = event.mimeData().urls()
@@ -257,7 +257,6 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 # 최초 등록 시
                 else:
                     self.__file_data[idx] = file_path
-            self.__lineEdit_debug.setText("파일 로딩 중")
             # 썸네일 추출
             self.__extract_thumbnails()
 
@@ -276,7 +275,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
             self.__item_listview.selectionModel().selectionChanged.connect(
                 self.__slot_icon_idxs
             )
-            self.__lineEdit_debug.setText("로딩 완료")
+            self.__lineEdit_debug.setText("로드 완료")
             event.acceptProposedAction()
         else:
             event.ignore()

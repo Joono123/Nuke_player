@@ -117,6 +117,7 @@ class Thread_Updater(QtCore.QThread):
             self.running = False
             self.quit()
             self.wait(10000)
+            print("\033[32m스레드 정상 종료\033[0m")
 
 
 class VideoWidget(QtWidgets.QWidget):
@@ -124,12 +125,13 @@ class VideoWidget(QtWidgets.QWidget):
         super().__init__(parent)
 
         # vars
-        self.playlst = playlist
+        self.path_lst = playlist
         self.__dp_idx = 1
         self.__NP_Util = NP_Utils
 
         # Set UI
-        self.setWindowTitle("Nuke Player")
+        self.setWindowTitle("Single Viewer")
+        self.setAcceptDrops(True)
         qt_lib.QtLibs.center_on_screen(self)
 
         self.__init_ui()
@@ -156,11 +158,10 @@ class VideoWidget(QtWidgets.QWidget):
 
         # 플레이 리스트 등록
         self.__play_lst = QtMultimedia.QMediaPlaylist()
-        self.__add_play_lst(self.playlst)
+        self.__add_play_lst(self.path_lst)
         self.__player.setPlaylist(self.__play_lst)
 
         # 위젯 설정
-        self.overlay_widget = QtWidgets.QWidget()
         v_widget = QtMultimediaWidgets.QVideoWidget()
         v_widget.setMinimumSize(800, 450)
         v_widget.setStyleSheet("background-color: rgb(0, 0, 0);")
@@ -223,8 +224,14 @@ class VideoWidget(QtWidgets.QWidget):
         self.h_spacer = QtWidgets.QSpacerItem(
             200, 25, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
         )
-        self.__label_dp_idx = QtWidgets.QLabel(f"1 / {len(self.playlst)}")
+        self.__label_dp_idx = QtWidgets.QLabel(f"1 / {len(self.path_lst)}")
         self.__label_dp_idx.setFont(font2)
+
+        # frame
+        self.__overlay_frame = QtWidgets.QFrame()
+        self.__overlay_frame.setStyleSheet("background-color: rgba(0, 0, 255, 100);")
+        self.__overlay_frame.setGeometry(v_widget.geometry())
+        self.__overlay_frame.hide()
 
         # layout
         hbox = QtWidgets.QHBoxLayout()
@@ -247,6 +254,7 @@ class VideoWidget(QtWidgets.QWidget):
         vbox.addLayout(hbox_2)
         vbox.addWidget(v_widget)
         vbox.addLayout(hbox)
+        vbox.addWidget(self.__overlay_frame)
 
         self.__player.setVideoOutput(v_widget)
 
@@ -289,6 +297,33 @@ class VideoWidget(QtWidgets.QWidget):
         else:
             event.ignore()
 
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            drag = QtGui.QDrag(self)
+            mime_data = QtCore.QMimeData()
+            mime_data.setUrls([QtCore.QUrl(self.path_lst[self.__dp_idx - 1])])
+            drag.setMimeData(mime_data)
+            drag.exec_(QtCore.Qt.CopyAction)
+            self.__overlay_frame.show()
+
     def closeEvent(self, event):
         if self.__player.state() in [
             QtMultimedia.QMediaPlayer.PlayingState,
@@ -297,7 +332,6 @@ class VideoWidget(QtWidgets.QWidget):
             self.__player.stop()
             self.__slider_updater.stop()
             self.__slider_updater.wait()
-            print("\033[32m스레드 정상 종료\033[0m")
         event.accept()
 
     def resizeEvent(self, event):
@@ -327,7 +361,7 @@ class VideoWidget(QtWidgets.QWidget):
         self.__slider.setValue(position)
 
     def __update_file_path_label(self):
-        current_file = self.playlst[self.__play_lst.currentIndex()]
+        current_file = self.path_lst[self.__play_lst.currentIndex()]
         self.__label_filename.setText(f"Current File: {current_file}")
 
     def __slot_dp_mode(self):
@@ -356,11 +390,11 @@ class VideoWidget(QtWidgets.QWidget):
 
     def __slot_next_video(self):
         current_idx = self.__play_lst.currentIndex()
-        if self.__play_lst.currentIndex() < len(self.playlst) - 1:
+        if self.__play_lst.currentIndex() < len(self.path_lst) - 1:
             self.__play_lst.setCurrentIndex(current_idx + 1)
             self.current_fps = self.__get_current_video_fps()
             self.__dp_idx += 1
-            self.__label_dp_idx.setText(f"{self.__dp_idx} / {len(self.playlst)}")
+            self.__label_dp_idx.setText(f"{self.__dp_idx} / {len(self.path_lst)}")
             # print("다음 영상을 재생합니다.")
             # self.__player.play()
             self.__player.setPosition(0)
@@ -382,7 +416,7 @@ class VideoWidget(QtWidgets.QWidget):
                 self.__play_lst.setCurrentIndex(current_idx - 1)
                 self.current_fps = self.__get_current_video_fps()
                 self.__dp_idx -= 1
-                self.__label_dp_idx.setText(f"{self.__dp_idx} / {len(self.playlst)}")
+                self.__label_dp_idx.setText(f"{self.__dp_idx} / {len(self.path_lst)}")
                 # print("이전 영상을 재생합니다.")
                 # self.__player.play()
         else:

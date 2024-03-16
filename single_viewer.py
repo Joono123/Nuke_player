@@ -133,7 +133,7 @@ class VideoWidget(QtWidgets.QWidget):
 
         # 위젯 설정
         v_widget = QtMultimediaWidgets.QVideoWidget()
-        v_widget.setMinimumSize(480, 270)
+        self.setMinimumSize(400, 225)
         v_widget.setStyleSheet("background-color: rgb(0, 0, 0);")
 
         # fonts
