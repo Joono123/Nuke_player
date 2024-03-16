@@ -7,6 +7,7 @@ from library.qt import library as qt_lib
 class MultipleViewer(QtWidgets.QWidget):
     def __init__(self, play_lst: list[str], parent=None):
         super().__init__(parent)
+        self.setWindowModality(QtCore.Qt.WindowModal)
 
         # Layout
         self.__vbox_layout = QtWidgets.QVBoxLayout()
@@ -23,6 +24,7 @@ class MultipleViewer(QtWidgets.QWidget):
         self.__setup_widgets()
         self.__setup_ui()
         self.__connections()
+        # self.__widget_connections()
 
     def closeEvent(self, event):
         for w in self.__widget_data.values():
@@ -32,6 +34,11 @@ class MultipleViewer(QtWidgets.QWidget):
                 w.update_thread.stop()
             print(f"\033[31m스레드 정상 종료: {w.wid}\033[0m")
         event.accept()
+
+    # def __widget_connections(self):
+    #     for widget in self.__widget_data.values():
+    #         widget: single_viewer.VideoWidget
+    #         widget.btn_fullscreen.clicked.connect(self.__slot_toggle_fullscreen)
 
     def __connections(self):
         self.__btn_play.clicked.connect(self.__slot_play_all)
@@ -127,12 +134,22 @@ class MultipleViewer(QtWidgets.QWidget):
             self.__widget_data[self.widget.wid] = self.widget
             if len(self.__play_lst) <= 4:
                 # widget.setMinimumSize(720, 480)
+                self.widget.label_path.setFont(QtGui.QFont("Sans Serif", 10))
+                self.widget.label_fps.setFont(QtGui.QFont("Sans Serif", 10))
                 self.__grid_layout.addWidget(self.__frame, int(idx // 2), int(idx % 2))
             elif 4 < len(self.__play_lst) <= 9:
                 # self.widget.setMinimumSize(320, 180)
+                self.widget.label_path.setFont(QtGui.QFont("Sans Serif", 9))
+                self.widget.label_fps.setFont(QtGui.QFont("Sans Serif", 9))
+                self.widget.label_remain_time.setFont(QtGui.QFont("Sans Serif", 7))
+                self.widget.label_current_time.setFont(QtGui.QFont("Sans Serif", 7))
                 self.__grid_layout.addWidget(self.__frame, int(idx // 3), int(idx % 3))
             elif 9 < len(self.__play_lst):
                 # self.widget.setMinimumSize(224, 126)
+                self.widget.label_path.setFont(QtGui.QFont("Sans Serif", 8))
+                self.widget.label_fps.setFont(QtGui.QFont("Sans Serif", 8))
+                self.widget.label_remain_time.setFont(QtGui.QFont("Sans Serif", 6))
+                self.widget.label_current_time.setFont(QtGui.QFont("Sans Serif", 6))
                 self.__grid_layout.addWidget(self.__frame, int(idx // 4), int(idx % 4))
 
         rows = self.__grid_layout.rowCount()
@@ -168,22 +185,22 @@ class MultipleViewer(QtWidgets.QWidget):
         for w in self.__widget_data.values():
             w: single_viewer.VideoWidget
             w.player.play()
-            self.__btn_play.setEnabled(False)
-            self.__btn_pause.setEnabled(True)
+            # self.__btn_play.setEnabled(False)
+            # self.__btn_pause.setEnabled(True)
 
     def __slot_pause_all(self):
         for w in self.__widget_data.values():
             w: single_viewer.VideoWidget
             w.player.pause()
-            self.__btn_play.setEnabled(True)
-            self.__btn_pause.setEnabled(False)
+            # self.__btn_play.setEnabled(True)
+            # self.__btn_pause.setEnabled(False)
 
     def __slot_stop_all(self):
         for w in self.__widget_data.values():
             w: single_viewer.VideoWidget
             w.player.stop()
-            self.__btn_play.setEnabled(True)
-            self.__btn_pause.setEnabled(False)
+            # self.__btn_play.setEnabled(True)
+            # self.__btn_pause.setEnabled(False)
 
     @property
     def get_dp_mode(self) -> str:
@@ -196,10 +213,10 @@ class MultipleViewer(QtWidgets.QWidget):
 #     "/home/rapa/Downloads/test_1280 (copy).mp4",
 #     "/home/rapa/Downloads/test_1280 (another copy).mp4",
 #     "/home/rapa/Downloads/test_1280 (another copy).mp4",
-#     "/home/rapa/Downloads/test_1280 (another copy).mp4",
-#     "/home/rapa/Downloads/test_1280 (another copy).mp4",
-#     "/home/rapa/Downloads/test_1280 (another copy).mp4",
-#     "/home/rapa/Downloads/test_1280 (another copy).mp4",
+#     # "/home/rapa/Downloads/test_1280 (another copy).mp4",
+#     # "/home/rapa/Downloads/test_1280 (another copy).mp4",
+#     # "/home/rapa/Downloads/test_1280 (another copy).mp4",
+#     # "/home/rapa/Downloads/test_1280 (another copy).mp4",
 #     # "/home/rapa/Downloads/test_1280 (another copy).mp4",
 # ]
 # if __name__ == "__main__":

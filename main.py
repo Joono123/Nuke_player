@@ -13,14 +13,19 @@
 # TODO: QWidget::paintEngine: Should no longer be called 에러 처리 필요 >> 무시해도 된다고 함
 
 
-import nuke
 import sys
 import importlib
 import os
+
+os.environ["NUKE_INTERACTIVE"] = "1"
+import nuke
 import shutil
 import atexit
 import pathlib
 import mimetypes
+import platform
+
+sys.path.append("/home/rapa/workspace/python/Nuke_player/muliple_viewer.py")
 import muliple_viewer
 
 from PySide2 import QtWidgets, QtGui, QtCore
@@ -56,12 +61,13 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__NP_util.NP_Utils.make_dir(self.thumb_dir)
 
         self.__file_data = dict()  # {인덱스: 원본 파일 경로}의 형태로 데이터 저장
+        self.__file_lst = list()
         self.__thumb_lst = list()  # 썸네일 디렉토리 내의 파일 경로를 리스트로 저장
         self.__play_lst = list()  # 선택된 파일의 경로를 인덱스로 저장
         self.__play_lst_basename = list()
 
         # 모델 설정
-        self.__itemview_model = NP_model.NP_ItemModel(self.__thumb_lst)
+        self.__itemview_model = NP_model.NP_ItemModel(self.__thumb_lst, self.__file_lst)
         self.__item_listview.setModel(self.__itemview_model)
         self.__listview_model = NP_model.NP_ListModel(self.__play_lst)
         self.__text_listview.setModel(self.__listview_model)
@@ -105,9 +111,6 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
         # btns
         hbox_btn = QtWidgets.QHBoxLayout()
-        # self.__adjust_size_1 = QtWidgets.QPushButton("1")
-        # self.__adjust_size_2 = QtWidgets.QPushButton("2")
-        # self.__adjust_size_3 = QtWidgets.QPushButton("3")
         self.__adjust_size_1 = QtWidgets.QPushButton("", self)
         self.__adjust_size_2 = QtWidgets.QPushButton("", self)
         self.__adjust_size_3 = QtWidgets.QPushButton("", self)
@@ -132,6 +135,12 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__btn_import = QtWidgets.QPushButton("Import")
         self.__btn_import.setFixedSize(70, 25)
 
+        self.__adjust_size_1.setToolTip("Set Icon Size Maximum (F1)")
+        self.__adjust_size_2.setToolTip("Set Icon Size Normal (F2)")
+        self.__adjust_size_3.setToolTip("Set Icon Size Minimum (F3)")
+        self.__btn_play.setToolTip("Play Playlist in Viewer (P)")
+        self.__btn_import.setToolTip("Import File into Nuke (I)")
+
         # lineEdit
         self.__lineEdit_debug = QtWidgets.QLineEdit("파일을 등록하세요")
         self.__lineEdit_debug.setFont(font_2)
@@ -146,6 +155,8 @@ class Nuke_Player(QtWidgets.QMainWindow):
         check_label = QtWidgets.QLabel("Multiple Viewer")
         self.__check_viewer = QtWidgets.QCheckBox()
         self.__check_viewer.setChecked(True)
+        self.__check_viewer.setToolTip("Choose Viewer (V)")
+        check_label.setToolTip("Choose Viewer (V)")
 
         # labels
         label_list = QtWidgets.QLabel("Selected Playlist")
@@ -194,16 +205,68 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__btn_import.clicked.connect(self.__slot_import_on_nuke)
 
         # 드래그 or 드랍 시 시그널 발생
-        self.__item_listview.dragEnterEvent = self.__dragEnterEvent
-        self.__item_listview.dragMoveEvent = self.__dragMoveEvent
-        self.__item_listview.dropEvent = self.__dropEvent
-        # self.__item_listview.context_request.connect(self.__slot_open_dir)
+        self.__item_listview.dragEnterEvent = self.__dragEnter_items
+        self.__item_listview.dragMoveEvent = self.__dragMove_items
+        self.__item_listview.dropEvent = self.__drop_items
+        # self.__text_listview.dragEnterEvent = self.__dragEnter_list
+        # self.__text_listview.dragMoveEvent = self.__dragMove_list
+        # self.__text_listview.dropEvent = self.__drop_list
+        # self.__text_listview.mousePressEvent = self.__mouseDrag_list
+
+        # 우클릭 시 컨텍스트 메뉴 발생
+        self.__item_listview.customContextMenuRequested.connect(self.__slot_context)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
-        if event.key() in [QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return]:
+        if event.key() == QtCore.Qt.Key_F1:
+            self.__adjust_size_1.click()
+        elif event.key() == QtCore.Qt.Key_F2:
+            self.__adjust_size_2.click()
+        elif event.key() == QtCore.Qt.Key_F3:
+            self.__adjust_size_3.click()
+        elif event.key() == QtCore.Qt.Key_V:
+            if self.__check_viewer.isChecked():
+                print("v")
+                self.__check_viewer.setChecked(False)
+            else:
+                print("V")
+                self.__check_viewer.setChecked(True)
+        elif event.key() == QtCore.Qt.Key_I:
+            self.__slot_import_on_nuke()
+        elif event.key() in [
+            QtCore.Qt.Key_Enter,
+            QtCore.Qt.Key_Return,
+            QtCore.Qt.Key_P,
+        ]:
             self.__slot_play_videos()
 
-    def __dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
+    def __mouseDrag_list(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            drag = QtGui.QDrag(self)
+            mime_data = QtCore.QMimeData()
+            mime_data.setText("hi")
+            drag.setMimeData(mime_data)
+            drag.exec_(QtCore.Qt.MoveAction)
+
+    def __dragEnter_list(self, event: QtGui.QDragEnterEvent) -> None:
+        if event.mimeData().hasText():
+            print(event.mimeData().text())
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def __dragMove_list(self, event: QtGui.QDragMoveEvent) -> None:
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def __drop_list(self, event: QtGui.QDropEvent) -> None:
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def __dragEnter_items(self, event: QtGui.QDragEnterEvent) -> None:
         """
         ListView로 마우스가 드래그 상태로 들어온 경우
         이벤트의 데이터에 URL이 포함되었는지 검증
@@ -213,7 +276,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         else:
             event.ignore()
 
-    def __dragMoveEvent(self, event: QtGui.QDragMoveEvent) -> None:
+    def __dragMove_items(self, event: QtGui.QDragMoveEvent) -> None:
         """
         ListView에서 마우스가 드래그 상태로 움직이는 경우
         이벤트의 데이터에 URL이 포함되었는지 검증
@@ -223,7 +286,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         else:
             event.ignore()
 
-    def __dropEvent(self, event: QtGui.QDropEvent) -> None:
+    def __drop_items(self, event: QtGui.QDropEvent) -> None:
         """
         ListView내에서 드롭되었을 경우 해당 데이터의 URL(파일 경로)을
         딕셔너리에 저장 후 각 파일의 썸네일을 추출하여 임시 디렉토리에 저장
@@ -267,7 +330,10 @@ class Nuke_Player(QtWidgets.QMainWindow):
                     sys_lib.System.get_files_lst(pathlib.Path(self.thumb_dir), ".jpg"),
                 )
             )
-            self.__itemview_model = NP_model.NP_ItemModel(self.__thumb_lst)
+            self.__file_lst = list(self.__file_data.values())
+            self.__itemview_model = NP_model.NP_ItemModel(
+                self.__thumb_lst, self.__file_lst
+            )
             self.__item_listview.setModel(self.__itemview_model)
             # print(f'\033[32m{self.__file_data}\n파일 불러오기 완료\033[0m')
 
@@ -306,17 +372,50 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 f_path, file_name, "1920x1080"
             )
 
-    @QtCore.Slot(QtCore.QPoint)
-    def __slot_open_dir(self, pos):
-        menu = QtWidgets.QMenu()
+    def __slot_context(self, point):
+        idx = self.__item_listview.indexAt(point)
+        if idx.isValid():
+            menu = QtWidgets.QMenu()
+            font = QtGui.QFont("Sans Serif", 8)
+            menu.setStyleSheet(
+                """
+                QMenu {
+                    color: rgb(255, 255, 255);
+                    background-color: rgb(70, 70, 70);
+                    border: 3px rgb(30, 30, 30);
+                }
+                QMenu::item {
+                    padding: 4px 8px;
+                    background-color: transparent;
+                    color: rgb(255, 255, 255);
+                }
+                QMenu::item:selected {
+                    background-color: rgb(30, 80, 230);
+                    color: rgb(255, 255, 255);
+                }
+            """
+            )
+            menu.setFont(font)
+            act_1 = menu.addAction("Open in Dir")
+            act_1.triggered.connect(lambda: self.__slot_open_in_dir(idx))
+            menu.exec_(self.__item_listview.mapToGlobal(point))
 
-        act_1 = menu.addAction(QtWidgets.QAction("test"))
-        menu.exec_(self.__item_listview.mapToGlobal(pos))
-        # if self.__play_lst:
-        #     for file_path in self.__play_lst:
-        #         sys_lib.System.open_folder(os.path.dirname(file_path))
-        # else:
-        #     print("\033[31mERROR: 플레이리스트가 설정되지 않았습니다.\033[0m")
+    def __slot_open_in_dir(self, index):
+        video_dir = os.path.dirname(self.__file_lst[index.row()])
+        if not os.path.isdir(video_dir):
+            print("올바르지 않은 접근입니다")
+            self.__lineEdit_debug.setText("ERROR: 올바르지 않은 접근입니다")
+            return
+        if not os.path.exists(video_dir):
+            self.__lineEdit_debug.setText("ERROR: 존재하지 않는 디렉토리입니다")
+            return
+
+        if platform.system() == "Linux":
+            os.system(f'xdg-open "{video_dir}"')
+        elif platform.system() == "Windows":
+            os.system(f'explorer "{video_dir}"')
+        elif platform.system() == "Darwin":
+            os.system(f'open "{video_dir}"')
 
     def __slot_icon_idxs(
         self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection
@@ -360,13 +459,16 @@ class Nuke_Player(QtWidgets.QMainWindow):
     def __slot_play_videos(self):
         if len(self.__play_lst):
             if self.__check_viewer.isChecked():
-                vw = muliple_viewer.MultipleViewer(self.__play_lst)
-                vw.show()
+                self.__mult_vw = muliple_viewer.MultipleViewer(self.__play_lst)
+                self.__mult_vw.show()
+                # self.setDisabled(True)
+                # if self.__mult_vw.close():
+                #     self.setEnabled(True)
             else:
-                vw = self.__NP_util.VideoWidget(self.__play_lst)
-                vw.show()
+                self.__sing_vw = self.__NP_util.VideoWidget(self.__play_lst)
+                self.__sing_vw.show()
         else:
-            print("\033[31mERROR: 플레이리스트가 설정되지 않았습니다.\033[0m")
+            self.__lineEdit_debug.setText("ERROR: 재생할 영상이 선택되지 않았습니다")
             qt_lib.QtLibs.error_dialog("ERROR", "재생할 영상이 선택되지 않았습니다.")
             return
 
@@ -377,7 +479,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 read_node["file"].fromUserText(v_path)
                 print(v_path)
         else:
-            print("\033[31mERROR: 플레이리스트가 설정되지 않았습니다.\033[0m")
+            self.__lineEdit_debug.setText("ERROR: 삽입할 영상이 선택되지 않았습니다")
             qt_lib.QtLibs.error_dialog("ERROR", "삽입할 영상이 선택되지 않았습니다.")
             return
 
@@ -387,7 +489,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         icon_h = int(main_size.height() / aspect - adjust)
         self.__item_listview.setIconSize(QtCore.QSize(icon_w, icon_h))
         if aspect == 2:
-            self.__item_listview.setFont(QtGui.QFont("Sans Serif", 12))
+            self.__item_listview.setFont(QtGui.QFont("Sans Serif", 11))
             self.__adjust_size_1.setEnabled(False)
             self.__adjust_size_2.setEnabled(True)
             self.__adjust_size_3.setEnabled(True)

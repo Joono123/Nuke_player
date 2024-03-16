@@ -178,15 +178,21 @@ class VideoWidget(QtWidgets.QWidget):
         self.__btn_stop = QtWidgets.QPushButton()
         self.__btn_next = QtWidgets.QPushButton()
         self.__btn_prev = QtWidgets.QPushButton()
+        self.__btn_loop = QtWidgets.QPushButton()
         self.__btn_mode = QtWidgets.QPushButton("time")
+        self.__btn_fullscreen = QtWidgets.QPushButton()
         self.__btn_mode.setFont(font)
+        self.__btn_loop.setFixedSize(35, 25)
         self.__btn_mode.setFixedSize(35, 25)
+        self.__btn_fullscreen.setFixedSize(25, 25)
         self.__btn_open.setFocusPolicy(QtCore.Qt.NoFocus)
         self.__btn_play.setFocusPolicy(QtCore.Qt.NoFocus)
         self.__btn_next.setFocusPolicy(QtCore.Qt.NoFocus)
         self.__btn_prev.setFocusPolicy(QtCore.Qt.NoFocus)
         self.__btn_stop.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.__btn_loop.setFocusPolicy(QtCore.Qt.NoFocus)
         self.__btn_mode.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.__btn_fullscreen.setFocusPolicy(QtCore.Qt.NoFocus)
         self.__btn_open.setIcon(
             self.style().standardIcon(QtWidgets.QStyle.SP_DirOpenIcon)
         )
@@ -202,6 +208,17 @@ class VideoWidget(QtWidgets.QWidget):
         self.__btn_prev.setIcon(
             self.style().standardIcon(QtWidgets.QStyle.SP_MediaSkipBackward)
         )
+        self.__btn_loop.setIcon(
+            self.style().standardIcon(QtWidgets.QStyle.SP_BrowserReload)
+        )
+        self.__btn_fullscreen.setIcon(
+            QtGui.QIcon(
+                "/home/rapa/workspace/python/Nuke_player/resource/png/fullscreen.png"
+            )
+        )
+
+        self.__btn_loop.setCheckable(True)
+        self.__btn_loop.setChecked(False)
 
         # slider
         self.__slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -244,7 +261,9 @@ class VideoWidget(QtWidgets.QWidget):
         hbox.addWidget(self.__label_current_time)
         hbox.addWidget(self.__slider)
         hbox.addWidget(self.__label_remain_time)
+        hbox.addWidget(self.__btn_loop)
         hbox.addWidget(self.__btn_mode)
+        hbox.addWidget(self.__btn_fullscreen)
         hbox_2 = QtWidgets.QHBoxLayout()
         hbox_2.addWidget(self.__label_filename)
         hbox_2.addItem(self.h_spacer)
@@ -257,6 +276,7 @@ class VideoWidget(QtWidgets.QWidget):
         vbox.addWidget(self.__overlay_frame)
 
         self.__player.setVideoOutput(v_widget)
+        self.__overlay_frame.raise_()
 
         self.setLayout(vbox)
 
@@ -269,6 +289,7 @@ class VideoWidget(QtWidgets.QWidget):
         self.__btn_next.clicked.connect(self.__slot_next_video)
         self.__btn_prev.clicked.connect(self.__slot_prev_video)
         self.__btn_mode.clicked.connect(self.__slot_dp_mode)
+        self.__btn_fullscreen.clicked.connect(self.__slot_fullscreen)
 
         self.__player.stateChanged.connect(self.__slot_state_changed)
         self.__player.positionChanged.connect(self.__slot_pos_shanged)
@@ -292,8 +313,14 @@ class VideoWidget(QtWidgets.QWidget):
         elif event.key() in [QtCore.Qt.Key_Down, QtCore.Qt.Key_Q]:
             # self.__btn_stop.click()
             self.__slot_stop_video()
+        elif event.key() == QtCore.Qt.Key_R:
+            self.__btn_loop.click()
         elif event.key() == QtCore.Qt.Key_V:
             self.__slot_dp_mode()
+        elif event.key() == QtCore.Qt.Key_F11:
+            self.__slot_fullscreen()
+        elif event.key() == QtCore.Qt.Key_Escape:
+            self.close()
         else:
             event.ignore()
 
@@ -312,6 +339,7 @@ class VideoWidget(QtWidgets.QWidget):
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
+            self.__overlay_frame.show()
         else:
             event.ignore()
 
@@ -328,6 +356,7 @@ class VideoWidget(QtWidgets.QWidget):
         if self.__player.state() in [
             QtMultimedia.QMediaPlayer.PlayingState,
             QtMultimedia.QMediaPlayer.PausedState,
+            QtMultimedia.QMediaPlayer.StoppedState,
         ]:
             self.__player.stop()
             self.__slider_updater.stop()
@@ -363,6 +392,12 @@ class VideoWidget(QtWidgets.QWidget):
     def __update_file_path_label(self):
         current_file = self.path_lst[self.__play_lst.currentIndex()]
         self.__label_filename.setText(f"Current File: {current_file}")
+
+    def __slot_fullscreen(self):
+        if not self.isFullScreen():
+            self.showFullScreen()
+        else:
+            self.showNormal()
 
     def __slot_dp_mode(self):
         if self.__btn_mode.text() == "fps":
@@ -453,6 +488,13 @@ class VideoWidget(QtWidgets.QWidget):
             self.__btn_play.setIcon(
                 self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay)
             )
+        if ste == QtMultimedia.QMediaPlayer.StoppedState:
+            if self.__btn_loop.isChecked():
+                self.__player.setPosition(0)
+                self.__player.play()
+                self.__btn_play.setIcon(
+                    self.style().standardIcon(QtWidgets.QStyle.SP_MediaPause)
+                )
 
     def __slot_pos_shanged(self, pos):
         self.__slider.setValue(pos)

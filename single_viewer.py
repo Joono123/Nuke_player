@@ -1,6 +1,8 @@
 import sys
 import os
 import time
+
+sys.path.append("/home/rapa/libs_nuke")
 import cv2
 import uuid
 from PySide2 import QtWidgets, QtGui, QtMultimediaWidgets, QtCore, QtMultimedia
@@ -143,15 +145,15 @@ class VideoWidget(QtWidgets.QWidget):
         font2.setBold(True)
 
         # cursor
-        self.__label_cursor = QtWidgets.QLabel("Custom Cursor")
-        self.__label_cursor.setStyleSheet("color: white; background-color: black;")
-        self.__label_cursor.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_cursor = QtWidgets.QLabel("Custom Cursor")
+        self.label_cursor.setStyleSheet("color: white; background-color: black;")
+        self.label_cursor.setAlignment(QtCore.Qt.AlignCenter)
 
         pixmap = QtGui.QPixmap(100, 50)
         pixmap.fill(QtCore.Qt.transparent)
 
         painter = QtGui.QPainter(pixmap)
-        self.__label_cursor.render(painter, QtCore.QPoint(0, 0))
+        self.label_cursor.render(painter, QtCore.QPoint(0, 0))
         painter.end()
 
         # 커스텀 커서 생성
@@ -165,6 +167,7 @@ class VideoWidget(QtWidgets.QWidget):
         self.__btn_stop = QtWidgets.QPushButton()
         self.btn_mode = QtWidgets.QPushButton("tc")
         self.btn_loop = QtWidgets.QPushButton()
+        self.btn_fullscreen = QtWidgets.QPushButton()
         self.__btn_play.setIcon(
             self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay)
         )
@@ -174,42 +177,46 @@ class VideoWidget(QtWidgets.QWidget):
         self.btn_loop.setIcon(
             self.style().standardIcon(QtWidgets.QStyle.SP_BrowserReload)
         )
+        self.btn_fullscreen.setIcon(
+            QtGui.QIcon(
+                "/home/rapa/workspace/python/Nuke_player/resource/png/detach_screen.png"
+            )
+        )
         self.btn_mode.setFont(font)
-        self.btn_mode.setFixedSize(30, 25)
-        self.btn_loop.setFixedSize(30, 25)
+        self.btn_mode.setFixedSize(25, 25)
+        self.btn_loop.setFixedSize(25, 25)
+        self.btn_fullscreen.setFixedSize(25, 25)
 
         self.btn_loop.setCheckable(True)
         self.btn_loop.setChecked(False)
 
         # labels
-        self.__label_frame = QtWidgets.QFrame()
-        self.__label_frame.setFrameShape(QtWidgets.QFrame.Panel)
-        self.__label_frame.setFrameShadow(QtWidgets.QFrame.Sunken)
-        self.__label_frame.setLineWidth(2)
-        self.__label_frame.setLayout(QtWidgets.QHBoxLayout())
-        self.__label_path = QtWidgets.QLabel()
-        self.__label_path.setText(
-            f"Current File: {os.path.basename(self.__video_path)}"
-        )
+        self.label_frame = QtWidgets.QFrame()
+        self.label_frame.setFrameShape(QtWidgets.QFrame.Panel)
+        self.label_frame.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.label_frame.setLineWidth(2)
+        self.label_frame.setLayout(QtWidgets.QHBoxLayout())
+        self.label_path = QtWidgets.QLabel()
+        self.label_path.setText(f"Current File: {os.path.basename(self.__video_path)}")
         label_spacer = QtWidgets.QSpacerItem(
             200, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
         )
-        self.__label_fps = QtWidgets.QLabel()
-        self.__label_fps.setText(f"{self.__get_current_video_fps()}fps")
+        self.label_fps = QtWidgets.QLabel()
+        self.label_fps.setText(f"{self.__get_current_video_fps()}fps")
 
-        self.__label_frame.layout().addWidget(self.__label_path)
-        self.__label_frame.layout().addItem(label_spacer)
-        self.__label_frame.layout().addWidget(self.__label_fps)
+        self.label_frame.layout().addWidget(self.label_path)
+        self.label_frame.layout().addItem(label_spacer)
+        self.label_frame.layout().addWidget(self.label_fps)
 
-        self.__label_remain_time = QtWidgets.QLabel()
-        self.__label_remain_time.setAlignment(QtCore.Qt.AlignCenter)
-        self.__label_remain_time.setText("00:00:00")
-        self.__label_remain_time.setFont(font)
+        self.label_remain_time = QtWidgets.QLabel()
+        self.label_remain_time.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_remain_time.setText("00:00:00")
+        self.label_remain_time.setFont(font)
 
-        self.__label_current_time = QtWidgets.QLabel()
-        self.__label_current_time.setAlignment(QtCore.Qt.AlignCenter)
-        self.__label_current_time.setText("00:00:00 / 00:00:00")
-        self.__label_current_time.setFont(font)
+        self.label_current_time = QtWidgets.QLabel()
+        self.label_current_time.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_current_time.setText("00:00:00 / 00:00:00")
+        self.label_current_time.setFont(font)
 
         # Overlay Frame(test)
         # label_overlay = QtWidgets.QLabel("Drop on NUKE")
@@ -233,23 +240,25 @@ class VideoWidget(QtWidgets.QWidget):
         self.__btn_stop.setFocusPolicy(QtCore.Qt.NoFocus)
         self.btn_mode.setFocusPolicy(QtCore.Qt.NoFocus)
         self.btn_loop.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.btn_fullscreen.setFocusPolicy(QtCore.Qt.NoFocus)
         self.checkbox.setFocusPolicy(QtCore.Qt.NoFocus)
         self.__btn_play.setFocusPolicy(QtCore.Qt.NoFocus)
         self.__btn_stop.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.__label_path.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.label_path.setFocusPolicy(QtCore.Qt.NoFocus)
         self.__slider.setFocusPolicy(QtCore.Qt.NoFocus)
 
         # layouts
         hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(self.__btn_play)
         hbox.addWidget(self.__btn_stop)
-        hbox.addWidget(self.__label_current_time)
+        hbox.addWidget(self.label_current_time)
         hbox.addWidget(self.__slider)
-        hbox.addWidget(self.__label_remain_time)
+        hbox.addWidget(self.label_remain_time)
         hbox.addWidget(self.btn_loop)
         hbox.addWidget(self.btn_mode)
+        hbox.addWidget(self.btn_fullscreen)
         vbox = QtWidgets.QVBoxLayout()
-        vbox.addWidget(self.__label_frame)
+        vbox.addWidget(self.label_frame)
         vbox.addWidget(v_widget)
         vbox.addLayout(hbox)
 
@@ -261,10 +270,19 @@ class VideoWidget(QtWidgets.QWidget):
         self.__btn_play.clicked.connect(self.slot_play_video)
         self.__btn_stop.clicked.connect(self.slot_stop_video)
         self.btn_mode.clicked.connect(self.slot_changed_mode)
+        self.btn_fullscreen.clicked.connect(self.slot_fullscreen)
         self.__slider.sliderMoved.connect(self.__slot_slider_moved)
         self.player.stateChanged.connect(self.__slot_state_changed)
         self.player.positionChanged.connect(self.__slot_pos_shanged)
         self.player.durationChanged.connect(self.__slot_duration_changed)
+
+    def slot_fullscreen(self):
+        # if not self.isFullScreen():
+        #     self.showFullScreen()
+        # else:
+        #     self.showNormal()
+        vw = self.__NP_Util.VideoWidget([self.__video_path])
+        vw.show()
 
     def slot_stop_video(self):
         self.player.setPosition(0)
@@ -281,19 +299,22 @@ class VideoWidget(QtWidgets.QWidget):
 
     def __slot_state_changed(self, ste):
         # 영상이 끝난 경우, loop 버튼이 눌려 있으면 영상을 다시 재생함
-        if ste == QtMultimedia.QMediaPlayer.StoppedState:
-            if self.btn_loop.isChecked():
-                self.player.setPosition(0)
-                self.player.play()
+
         if ste == QtMultimedia.QMediaPlayer.PlayingState:
             self.__btn_play.setIcon(
                 self.style().standardIcon(QtWidgets.QStyle.SP_MediaPause)
             )
-
         else:
             self.__btn_play.setIcon(
                 self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay)
             )
+        if ste == QtMultimedia.QMediaPlayer.StoppedState:
+            if self.btn_loop.isChecked():
+                self.player.setPosition(0)
+                self.player.play()
+                self.__btn_play.setIcon(
+                    self.style().standardIcon(QtWidgets.QStyle.SP_MediaPause)
+                )
 
     def __slot_slider_moved(self, pos):
         self.player.setPosition(pos)
@@ -351,11 +372,11 @@ class VideoWidget(QtWidgets.QWidget):
         remain_time_str = remain_time.toString("hh:mm:ss")
 
         if self.btn_mode.text() == "fps":
-            self.__label_remain_time.setText(str(remain_frames))
-            self.__label_current_time.setText(f"{current_frames} / {total_frames}")
+            self.label_remain_time.setText(str(remain_frames))
+            self.label_current_time.setText(f"{current_frames} / {total_frames}")
         elif self.btn_mode.text() == "tc":
-            self.__label_remain_time.setText(remain_time_str)
-            self.__label_current_time.setText(f"{current_time_str} / {total_time_str}")
+            self.label_remain_time.setText(remain_time_str)
+            self.label_current_time.setText(f"{current_time_str} / {total_time_str}")
 
     def __get_current_video_fps(self):
         current_media = self.player.currentMedia()
@@ -378,6 +399,6 @@ test_path = "/home/rapa/Downloads/test1.MOV"
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    vw = VideoWidget(test_path)
-    vw.show()
+    _vw = VideoWidget(test_path)
+    _vw.show()
     app.exec_()
