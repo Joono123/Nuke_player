@@ -346,7 +346,11 @@ class Nuke_Player(QtWidgets.QMainWindow):
             self.__adjust_size_3.click()
             self.__adjust_size_btn(3)
         elif event.key() == QtCore.Qt.Key_Delete:
+            # selected_idx = self.__item_listview.selectedIndexes()
+            # for index in selected_idx:
+            #     self.__slot_del_file(index.row())
             self.__slot_del_file()
+            self.__item_listview.clearSelection()
         elif event.key() == QtCore.Qt.Key_V:
             if self.__check_viewer.isChecked():
                 print("v")
@@ -499,8 +503,53 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 f_path, file_name, "1920x1080"
             )
 
+    # def __slot_del_file(self, row):
+    #     print("del")
+    #     self.__itemview_model.removeRow(row)
+    #     self.__itemview_model.dataChanged.emit(
+    #         QtCore.QModelIndex(), QtCore.QModelIndex()
+    #     )
     def __slot_del_file(self):
-        ...
+        if not self.__play_lst:
+            self.__lineEdit_debug.setText("ERROR: 삭제할 파일이 선택되지 않았습니다")
+            return
+        selected_idx = self.__item_listview.selectedIndexes()
+        print(f"selected_idx: {selected_idx}")
+        for f_path in self.__play_lst[:]:
+            # 썸네일 삭제
+            print("-" * 50)
+            print(f"f_path: {f_path}")
+            print("\n")
+            thumbs = os.path.splitext(os.path.basename(f_path))[0] + ".jpg"
+            thumbs_path = os.path.join(self.thumb_dir, thumbs)
+            if os.path.exists(thumbs_path):
+                # 실제 파일 제거
+                os.remove(thumbs_path)
+                print("-" * 30, "Removed", "-" * 30)
+                print(f"thumb Removed: {thumbs} >> {thumbs_path}")
+                # 리스트 내 데이터 제거
+
+                # 썸네일 리스트 제거
+                self.__thumb_lst.remove(thumbs_path)
+                print(f"thumb_lst Removed: {thumbs_path} >> {self.__thumb_lst}")
+                # 파일 데이터 제거
+                self.__file_data = self.delete_key_from_value(self.__file_data, f_path)
+                print(f"file_data Removed: {f_path} >> {self.__file_data}")
+                # 파일 리스트 재정의
+                self.__file_lst = list(self.__file_data.values())
+                # 플레이 리스트 제거
+                # print(f"play_lst Removed: {f_path} >> {self.__play_lst}")
+                # self.__play_lst.remove(f_path)
+
+            else:
+                print("파일이 존재하지 않습니다.")
+
+            for idx in selected_idx:
+                print(idx.row())
+                self.__itemview_model.removeRow(idx.row())
+                self.__item_listview.clearSelection()
+                self.__play_lst.clear()
+                self.__itemview_model.layoutChanged.emit()
 
     def __slot_messagebox(self, btn: str):
         box = CustomMessageBox(self.__icon_error)
@@ -717,7 +766,13 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
     @staticmethod
     def delete_key_from_value(dictionary: dict, value):
-        print(f"origin: {dictionary}")
+        """
+        :param dictionary: 데이터를 삭제할 딕셔너리
+        :param value: 찾고자 하는 value
+        :return: 찾은 value가 존재하는 key값을 삭제한 후 index를 재부여한 딕셔너리
+        ex) {0: 123, 1: 456, 2: 789} >>> value = 456 >>> {0: 123, 1: 789}
+        """
+        # print(f"origin: {dictionary}")
         keys_to_del = []
         new_dict = dict()
         for key, val in dictionary.items():
@@ -727,7 +782,8 @@ class Nuke_Player(QtWidgets.QMainWindow):
             del dictionary[key]
         for idx, val in enumerate(list(dictionary.values())):
             new_dict[idx] = val
-        print(f"new: {new_dict}")
+        # print(f"new: {new_dict}")
+        return new_dict
 
 
 if __name__ == "__main__":

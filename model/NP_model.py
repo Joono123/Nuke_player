@@ -13,28 +13,28 @@ from PySide2 import QtCore, QtWidgets, QtGui
 class NP_ItemModel(QtCore.QAbstractListModel):
     def __init__(self, image_path: list[str], playlist: list[str], parent=None):
         super().__init__(parent)
-        self.__image_path = image_path
-        self.__video_path = playlist
+        self.image_path = image_path
+        self.video_path = playlist
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.DecorationRole:
-            if 0 <= index.row() < len(self.__image_path):
-                pixmap = QtGui.QPixmap(self.__image_path[index.row()])
+            if 0 <= index.row() < len(self.image_path):
+                pixmap = QtGui.QPixmap(self.image_path[index.row()])
                 icon = QtGui.QIcon(pixmap)
                 return icon
         elif role == QtCore.Qt.DisplayRole:
-            if 0 <= index.row() < len(self.__image_path):
+            if 0 <= index.row() < len(self.image_path):
                 file_name = os.path.splitext(
-                    os.path.basename(self.__image_path[index.row()])
+                    os.path.basename(self.image_path[index.row()])
                 )[0]
                 return file_name
         elif role == QtCore.Qt.ToolTipRole:
-            file_path = f"{self.__video_path[index.row()]}"
+            file_path = f"{self.video_path[index.row()]}"
             return file_path
         return None
 
     def rowCount(self, parent=...):
-        return len(self.__image_path)
+        return len(self.image_path)
 
 
 class NP_ListModel(QtCore.QAbstractListModel):

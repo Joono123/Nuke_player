@@ -73,29 +73,30 @@ class VideoWidget(QtWidgets.QWidget):
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             # print(event.mimeData().urls())
-            # self.__overlay_frame.hide()
+            self.__overlay_frame.hide()
             event.acceptProposedAction()
         else:
             event.ignore()
 
     def dropEvent(self, event):
         if event.mimeData().hasUrls():
-            # self.__overlay_frame.hide()
+            self.__overlay_frame.hide()
             event.acceptProposedAction()
         else:
             event.ignore()
 
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
-            # self.setCursor(self.custom_cursor)
+            self.setCursor(self.custom_cursor)
             # print(event.mimeData().urls())
-            # self.__overlay_frame.show()
+            self.__overlay_frame.show()
             event.acceptProposedAction()
         else:
             event.ignore()
 
-    # def dragLeaveEvent(self, event):
-    #     self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+        # def dragLeaveEvent(self, event):
+        self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
+
     #     self.__overlay_frame.show()
 
     def mousePressEvent(self, event):
@@ -218,14 +219,14 @@ class VideoWidget(QtWidgets.QWidget):
         self.label_current_time.setFont(font)
 
         # Overlay Frame(test)
-        # label_overlay = QtWidgets.QLabel("Drop on NUKE")
-        # label_overlay.setFont(font3)
+        label_overlay = QtWidgets.QLabel("Drop on NUKE")
+        label_overlay.setFont(font3)
         self.__overlay_frame = QtWidgets.QFrame(self)
         self.__overlay_frame.setLayout(QtWidgets.QVBoxLayout())
         self.__overlay_frame.layout().setAlignment(QtCore.Qt.AlignCenter)
-        # self.__overlay_frame.layout().addWidget(label_overlay)
+        self.__overlay_frame.layout().addWidget(label_overlay)
         self.__overlay_frame.setStyleSheet("background-color: rgba(50, 50, 255, 70);")
-        self.__overlay_frame.setGeometry(v_widget.geometry())
+        self.__overlay_frame.setGeometry(self.geometry())
         self.__overlay_frame.hide()
 
         # slider
