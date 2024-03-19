@@ -135,7 +135,6 @@ class VideoWidget(QtWidgets.QWidget):
 
         # 위젯 설정
         v_widget = QtMultimediaWidgets.QVideoWidget()
-        self.setMinimumSize(400, 225)
         v_widget.setStyleSheet("background-color: rgb(0, 0, 0);")
 
         # fonts
@@ -372,11 +371,15 @@ class VideoWidget(QtWidgets.QWidget):
         remain_time_str = remain_time.toString("hh:mm:ss")
 
         if self.btn_mode.text() == "fps":
-            self.label_remain_time.setText(str(remain_frames))
-            self.label_current_time.setText(f"{current_frames} / {total_frames}")
+            # self.label_remain_time.setText(str(remain_frames))
+            # self.label_current_time.setText(f"{current_frames} / {total_frames}")
+            self.label_remain_time.setText(f"{total_frames}")
+            self.label_current_time.setText(f"{current_frames}")
         elif self.btn_mode.text() == "tc":
-            self.label_remain_time.setText(remain_time_str)
-            self.label_current_time.setText(f"{current_time_str} / {total_time_str}")
+            # self.label_remain_time.setText(remain_time_str)
+            # self.label_current_time.setText(f"{current_time_str} / {total_time_str}")
+            self.label_remain_time.setText(f"{total_time_str}")
+            self.label_current_time.setText(f"{current_time_str}")
 
     def __get_current_video_fps(self):
         current_media = self.player.currentMedia()

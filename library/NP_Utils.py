@@ -38,6 +38,10 @@ class NP_Utils:
         )
 
     @staticmethod
+    def change_video_bitrate(video_path: str, output_path: str, bitrate: int):
+        (ffmpeg.input(video_path).output(output_path, b=str(bitrate) + "k").run())
+
+    @staticmethod
     def extract_thumbnail_subprocess(video_path: str, output_path: str, size: str):
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"File {video_path} not found.")
@@ -117,7 +121,7 @@ class Thread_Updater(QtCore.QThread):
             self.running = False
             self.quit()
             self.wait(10000)
-            print("\033[32m스레드 정상 종료\033[0m")
+            print("\033[31m스레드 정상 종료\033[0m")
 
 
 class VideoWidget(QtWidgets.QWidget):

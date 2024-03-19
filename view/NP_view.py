@@ -59,22 +59,3 @@ class NP_ListView(QtWidgets.QListView):
         self.setStyleSheet(
             "QListView::item:selected {" "background-color: rgba(30, 70, 255, 200);" "}"
         )
-
-    def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
-        if event.mimeData().hasText():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
-        if event.mimeData().hasText():
-            event.acceptProposedAction()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event: QtGui.QDropEvent):
-        if event.mimeData().hasText():
-            print(event.mimeData().text())
-            event.acceptProposedAction()
-        else:
-            event.ignore()

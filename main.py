@@ -43,10 +43,22 @@ importlib.reload(qt_lib)
 importlib.reload(sys_lib)
 
 
+class CustomMessageBox(QtWidgets.QMessageBox):
+    def __init__(self, icon_path: str, parent=None):
+        super(CustomMessageBox, self).__init__(parent)
+        if icon_path == "":
+            pass
+        else:
+            self.setIconPixmap(QtGui.QPixmap.fromImage(QtGui.QImage(icon_path)))
+        self.setFont(QtGui.QFont("Sans Serif", 9))
+        self.setStyleSheet(
+            "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
+        )
+
+
 class Nuke_Player(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-
         # 변수 설정
         self.__NP_util = NP_Utils
         self.__item_listview = NP_view.NP_ItemView()
@@ -61,7 +73,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__NP_util.NP_Utils.make_dir(self.thumb_dir)
 
         self.__file_data = dict()  # {인덱스: 원본 파일 경로}의 형태로 데이터 저장
-        self.__file_lst = list()
+        self.__file_lst = list()  # file_data의 value값을 리스트로 저장
         self.__thumb_lst = list()  # 썸네일 디렉토리 내의 파일 경로를 리스트로 저장
         self.__play_lst = list()  # 선택된 파일의 경로를 인덱스로 저장
         self.__play_lst_basename = list()
@@ -74,6 +86,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
         # Init set
         self.__set_ui()
+        self.__set_menu()
         self.__connection()
 
         self.__item_listview.setIconSize(QtCore.QSize(229, 109))
@@ -98,11 +111,19 @@ class Nuke_Player(QtWidgets.QMainWindow):
         """
         메인 UI 요소 생성 및 설정
         """
+        # Icon_pixmap
+        self.__icon_error = (
+            "/home/rapa/workspace/python/Nuke_player/resource/png/error.png"
+        )
+        self.__icon_info = (
+            "/home/rapa/workspace/python/Nuke_player/resource/png/information.png"
+        )
+
         # fonts
-        font_1 = QtGui.QFont("Sans Serif", 10)
-        font_2 = QtGui.QFont("Sans Serif", 8)
-        font_3 = QtGui.QFont("Sans Serif", 10)
-        self.setFont(font_1)
+        self.font_1 = QtGui.QFont("Sans Serif", 10)
+        self.font_2 = QtGui.QFont("Sans Serif", 8)
+        self.font_3 = QtGui.QFont("Sans Serif", 10)
+        self.setFont(self.font_1)
 
         # widget
         widget_1 = QtWidgets.QWidget()
@@ -123,6 +144,12 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__adjust_size_3.setIcon(
             QtGui.QIcon("/home/rapa/workspace/python/Nuke_player/resource/png/3x3.png")
         )
+        self.__adjust_size_1.setCheckable(True)
+        self.__adjust_size_2.setCheckable(True)
+        self.__adjust_size_3.setCheckable(True)
+        self.__adjust_size_1.setChecked(False)
+        self.__adjust_size_2.setChecked(True)
+        self.__adjust_size_3.setChecked(False)
 
         self.__adjust_size_1.setFixedSize(25, 25)
         self.__adjust_size_2.setFixedSize(25, 25)
@@ -143,7 +170,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
         # lineEdit
         self.__lineEdit_debug = QtWidgets.QLineEdit("파일을 등록하세요")
-        self.__lineEdit_debug.setFont(font_2)
+        self.__lineEdit_debug.setFont(self.font_2)
         self.__lineEdit_debug.setEnabled(False)
         self.__lineEdit_debug.setAlignment(QtCore.Qt.AlignVCenter)
         self.__lineEdit_debug.setStyleSheet(
@@ -161,7 +188,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         # labels
         label_list = QtWidgets.QLabel("Selected Playlist")
         label_list.setAlignment(QtCore.Qt.AlignCenter)
-        label_list.setFont(font_3)
+        label_list.setFont(self.font_3)
 
         hbox_btn.addWidget(self.__adjust_size_1)
         hbox_btn.addWidget(self.__adjust_size_2)
@@ -188,10 +215,97 @@ class Nuke_Player(QtWidgets.QMainWindow):
         widget_1.setLayout(main_hbox)
         self.setCentralWidget(widget_1)
         qt_lib.QtLibs.center_on_screen(self)
-        self.setWindowTitle("Nuke Player")
+        self.setWindowTitle("Video Player")
         self.setStyleSheet(
             "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
         )
+
+    def __set_menu(self) -> None:
+        # menu
+        menubar = QtWidgets.QMenuBar()
+        menu_file = menubar.addMenu("File")
+        menu_help = menubar.addMenu("Help")
+        self.file_1 = QtWidgets.QAction("Open Directory", self)
+        self.file_2 = QtWidgets.QAction("Exit", self)
+        self.help_1 = QtWidgets.QAction("What's this?", self)
+        self.help_2 = QtWidgets.QAction("Keyboard Shortcut", self)
+        self.file_1.setShortcut(QtGui.QKeySequence("Ctrl+D"))
+        self.file_2.setShortcut(QtGui.QKeySequence("Ctrl+Q"))
+        self.help_1.setShortcut(QtGui.QKeySequence("Ctrl+W"))
+        self.help_2.setShortcut(QtGui.QKeySequence("Ctrl+K"))
+        menu_help.addAction(self.help_1)
+        menu_help.addAction(self.help_2)
+        menu_file.addAction(self.file_1)
+        menu_file.addAction(self.file_2)
+        # menubar QSS
+        menubar.setStyleSheet(
+            """
+            QMenuBar {
+                background-color: rgb(55, 55, 55);
+                border: 1px solid #303030;
+                font-family: Sans Serif;
+                font-size: 12px;
+            }
+
+            QMenuBar::item {
+                background-color: transparent;
+                color: white;
+                padding: 4px 10px;
+            }
+
+            QMenuBar::item:selected {
+                background-color: rgb(30, 30, 30);
+            }
+            """
+        )
+
+        # menu QSS
+        menu_help.setStyleSheet(
+            """
+            QMenu {
+                background-color: rgb(50, 50, 50);
+                color: white;
+                border: 1px solid #303030;
+                font-family: Sans Serif;
+                font-size: 12px;
+            }
+
+            QMenu::item {
+                background-color: transparent;
+                color: white;
+                border: 1px solid #303030;
+                padding: 6px 20px;
+            }
+
+            QMenu::item:selected {
+                background-color: rgb(30, 30, 30);
+            }
+            """
+        )
+        menu_file.setStyleSheet(
+            """
+            QMenu {
+                background-color: rgb(50, 50, 50);
+                color: white;
+                border: 1px solid #303030;
+                font-family: Sans Serif;
+                font-size: 12px;
+            }
+
+            QMenu::item {
+                background-color: transparent;
+                color: white;
+                border: 1px solid #303030;
+                padding: 6px 20px;
+            }
+
+            QMenu::item:selected {
+                background-color: rgb(30, 30, 30);
+            }
+            """
+        )
+
+        self.setMenuBar(menubar)
 
     def __connection(self) -> None:
         """
@@ -199,8 +313,11 @@ class Nuke_Player(QtWidgets.QMainWindow):
         """
         # 버튼 클릭 시 시그널 발생
         self.__adjust_size_1.clicked.connect(lambda: self.__update_icon_size(2, 75))
+        self.__adjust_size_1.clicked.connect(lambda: self.__adjust_size_btn(1))
         self.__adjust_size_2.clicked.connect(lambda: self.__update_icon_size(3, 51))
+        self.__adjust_size_2.clicked.connect(lambda: self.__adjust_size_btn(2))
         self.__adjust_size_3.clicked.connect(lambda: self.__update_icon_size(4, 40))
+        self.__adjust_size_3.clicked.connect(lambda: self.__adjust_size_btn(3))
         self.__btn_play.clicked.connect(self.__slot_play_videos)
         self.__btn_import.clicked.connect(self.__slot_import_on_nuke)
 
@@ -208,21 +325,28 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__item_listview.dragEnterEvent = self.__dragEnter_items
         self.__item_listview.dragMoveEvent = self.__dragMove_items
         self.__item_listview.dropEvent = self.__drop_items
-        # self.__text_listview.dragEnterEvent = self.__dragEnter_list
-        # self.__text_listview.dragMoveEvent = self.__dragMove_list
-        # self.__text_listview.dropEvent = self.__drop_list
-        # self.__text_listview.mousePressEvent = self.__mouseDrag_list
 
         # 우클릭 시 컨텍스트 메뉴 발생
         self.__item_listview.customContextMenuRequested.connect(self.__slot_context)
 
+        # 메뉴 선택 시 시그널 발생
+        self.file_1.triggered.connect(self.__slot_open_in_dir)
+        self.file_2.triggered.connect(self.close)
+        self.help_1.triggered.connect(self.__slot_whats_this)
+        self.help_2.triggered.connect(self.__slot_shortcut)
+
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         if event.key() == QtCore.Qt.Key_F1:
             self.__adjust_size_1.click()
+            self.__adjust_size_btn(1)
         elif event.key() == QtCore.Qt.Key_F2:
             self.__adjust_size_2.click()
+            self.__adjust_size_btn(2)
         elif event.key() == QtCore.Qt.Key_F3:
             self.__adjust_size_3.click()
+            self.__adjust_size_btn(3)
+        elif event.key() == QtCore.Qt.Key_Delete:
+            self.__slot_del_file()
         elif event.key() == QtCore.Qt.Key_V:
             if self.__check_viewer.isChecked():
                 print("v")
@@ -342,6 +466,9 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 self.__slot_icon_idxs
             )
             self.__lineEdit_debug.setText("로드 완료")
+            print(
+                f"thumb_list: {self.__thumb_lst}\nfile_lst: {self.__file_lst}\nfile_data: {self.__file_data}"
+            )
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -372,6 +499,73 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 f_path, file_name, "1920x1080"
             )
 
+    def __slot_del_file(self):
+        ...
+
+    def __slot_messagebox(self, btn: str):
+        box = CustomMessageBox(self.__icon_error)
+        box.setWindowTitle(f"{btn} Error")
+        if btn == "Play":
+            box.setText("\n재생할 파일을 선택하세요")
+            box.exec_()
+        elif btn == "Import":
+            box.setText("\n삽입할 파일을 선택하세요")
+            box.exec_()
+        elif btn == "Open":
+            box.setText("\n파일이 선택되지 않았습니다")
+            box.exec_()
+        elif btn == "Directory":
+            box.setText("\n디렉토리가 존재하지 않습니다")
+            box.exec_()
+
+    def __slot_whats_this(self):
+        box = CustomMessageBox(self.__icon_info)
+        box.setWindowTitle("Multiple Video Player")
+        box.setText(
+            "\n"
+            "드래그 앤 드롭을 활용해 영상 등록 후\n"
+            "손 쉽게 노드 생성이 가능한 멀티 비디오 플레이어.\n"
+            "용량이 큰 파일의 경우 다중 재생이 어려울 수 있음."
+        )
+        box.exec_()
+
+    def __slot_shortcut(self):
+        box = CustomMessageBox("")
+        box.setWindowTitle("Keyboard Shortcut")
+        box.setText(
+            "             <Main UI>\n"
+            "[F1 ~ F3]  아이콘 크기 조절\n"
+            "[Delete]    등록된 영상 삭제\n"
+            "[V]            체크박스 선택/해제\n"
+            "[I]             GCC툴에 영상 삽입\n"
+            "[Enter, P]  영상 재생\n"
+            "\n"
+            "         <Single Viewer>\n"
+            "[Up, Space, K]    재생 / 일시정지\n"
+            "[Right, L]            맨 끝으로 이동\n"
+            "[Left, J]               맨 앞으로 이동\n"
+            "[Down, Q]           정지\n"
+            "[R]                      반복 재생\n"
+            "[V]                      표시 형식 변경\n"
+            "[F11]                  전체 화면\n"
+            "[Esc]                   창 닫기"
+        )
+        box.exec_()
+
+    def __adjust_size_btn(self, num):
+        if num == 1:
+            self.__adjust_size_1.setChecked(True)
+            self.__adjust_size_2.setChecked(False)
+            self.__adjust_size_3.setChecked(False)
+        elif num == 2:
+            self.__adjust_size_1.setChecked(False)
+            self.__adjust_size_2.setChecked(True)
+            self.__adjust_size_3.setChecked(False)
+        elif num == 3:
+            self.__adjust_size_1.setChecked(False)
+            self.__adjust_size_2.setChecked(False)
+            self.__adjust_size_3.setChecked(True)
+
     def __slot_context(self, point):
         idx = self.__item_listview.indexAt(point)
         if idx.isValid():
@@ -397,25 +591,39 @@ class Nuke_Player(QtWidgets.QMainWindow):
             )
             menu.setFont(font)
             act_1 = menu.addAction("Open in Dir")
-            act_1.triggered.connect(lambda: self.__slot_open_in_dir(idx))
+            # act_1.triggered.connect(lambda: self.__slot_open_in_dir(idx))
+            act_1.triggered.connect(self.__slot_open_in_dir)
             menu.exec_(self.__item_listview.mapToGlobal(point))
 
-    def __slot_open_in_dir(self, index):
-        video_dir = os.path.dirname(self.__file_lst[index.row()])
-        if not os.path.isdir(video_dir):
-            print("올바르지 않은 접근입니다")
-            self.__lineEdit_debug.setText("ERROR: 올바르지 않은 접근입니다")
-            return
-        if not os.path.exists(video_dir):
-            self.__lineEdit_debug.setText("ERROR: 존재하지 않는 디렉토리입니다")
-            return
+    def __slot_open_in_dir(self):
+        # 열린 디렉토리의 이름을 저장
+        opened_dir = []
 
-        if platform.system() == "Linux":
-            os.system(f'xdg-open "{video_dir}"')
-        elif platform.system() == "Windows":
-            os.system(f'explorer "{video_dir}"')
-        elif platform.system() == "Darwin":
-            os.system(f'open "{video_dir}"')
+        if not len(self.__play_lst):
+            self.__lineEdit_debug.setText("ERROR: 파일이 선택되지 않았습니다")
+            self.__slot_messagebox("Open")
+        for f_path in self.__play_lst:
+            video_dir = os.path.dirname(f_path)
+            if not os.path.isdir(video_dir):
+                self.__lineEdit_debug.setText("ERROR: 올바르지 않은 접근입니다")
+                self.__slot_messagebox("Directoty")
+                return
+            if not os.path.exists(video_dir):
+                self.__lineEdit_debug.setText("ERROR: 존재하지 않는 디렉토리입니다")
+                self.__slot_messagebox("Directoty")
+                return
+
+            # 같은 디렉토리는 중복해서 열리지 않도록 처리
+            if video_dir in opened_dir:
+                continue
+            if platform.system() == "Linux":
+                os.system(f'xdg-open "{video_dir}"')
+            elif platform.system() == "Windows":
+                os.system(f'explorer "{video_dir}"')
+            elif platform.system() == "Darwin":
+                os.system(f'open "{video_dir}"')
+
+            opened_dir.append(video_dir)
 
     def __slot_icon_idxs(
         self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection
@@ -458,19 +666,22 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
     def __slot_play_videos(self):
         if len(self.__play_lst):
-            if self.__check_viewer.isChecked():
-                self.__mult_vw = muliple_viewer.MultipleViewer(self.__play_lst)
-                self.__mult_vw.show()
-                # self.setDisabled(True)
-                # if self.__mult_vw.close():
-                #     self.setEnabled(True)
-            else:
-                self.__sing_vw = self.__NP_util.VideoWidget(self.__play_lst)
-                self.__sing_vw.show()
+            pass
         else:
             self.__lineEdit_debug.setText("ERROR: 재생할 영상이 선택되지 않았습니다")
-            qt_lib.QtLibs.error_dialog("ERROR", "재생할 영상이 선택되지 않았습니다.")
+            self.__slot_messagebox("Play")
             return
+        if self.__check_viewer.isChecked() and len(self.__play_lst) == 1:
+            self.__sing_vw = self.__NP_util.VideoWidget(self.__play_lst)
+            self.__sing_vw.show()
+
+        elif self.__check_viewer.isChecked() and len(self.__play_lst) > 1:
+            self.__mult_vw = muliple_viewer.MultipleViewer(self.__play_lst)
+            self.__mult_vw.show()
+
+        elif not self.__check_viewer.isChecked():
+            self.__sing_vw = self.__NP_util.VideoWidget(self.__play_lst)
+            self.__sing_vw.show()
 
     def __slot_import_on_nuke(self):
         if len(self.__play_lst):
@@ -480,7 +691,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 print(v_path)
         else:
             self.__lineEdit_debug.setText("ERROR: 삽입할 영상이 선택되지 않았습니다")
-            qt_lib.QtLibs.error_dialog("ERROR", "삽입할 영상이 선택되지 않았습니다.")
+            self.__slot_messagebox("Import")
             return
 
     def __update_icon_size(self, aspect, adjust) -> None:
@@ -503,6 +714,20 @@ class Nuke_Player(QtWidgets.QMainWindow):
             self.__adjust_size_1.setEnabled(True)
             self.__adjust_size_2.setEnabled(True)
             self.__adjust_size_3.setEnabled(False)
+
+    @staticmethod
+    def delete_key_from_value(dictionary: dict, value):
+        print(f"origin: {dictionary}")
+        keys_to_del = []
+        new_dict = dict()
+        for key, val in dictionary.items():
+            if val == value:
+                keys_to_del.append(key)
+        for key in keys_to_del:
+            del dictionary[key]
+        for idx, val in enumerate(list(dictionary.values())):
+            new_dict[idx] = val
+        print(f"new: {new_dict}")
 
 
 if __name__ == "__main__":
