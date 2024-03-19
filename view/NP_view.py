@@ -54,7 +54,6 @@ class NP_ListView(QtWidgets.QListView):
         # self.setSelectionMode(QtWidgets.QListView.NoSelection)
         self.setSelectionMode(QtWidgets.QListView.SingleSelection)
         self.setFocusPolicy(QtCore.Qt.NoFocus)
-        # self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
         self.setStyleSheet(
             "QListView::item:selected {" "background-color: rgba(30, 70, 255, 200);" "}"

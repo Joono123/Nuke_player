@@ -129,25 +129,37 @@ class MultipleViewer(QtWidgets.QWidget):
                 QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
             )
             self.__widget_data[self.widget.wid] = self.widget
-            if len(self.__play_lst) <= 4:
-                # self.setMinimumSize()
+            if len(self.__play_lst) == 2:
                 self.widget.label_path.setFont(QtGui.QFont("Sans Serif", 10))
                 self.widget.label_fps.setFont(QtGui.QFont("Sans Serif", 10))
                 self.__grid_layout.addWidget(self.__frame, int(idx // 2), int(idx % 2))
-            elif 4 < len(self.__play_lst) <= 9:
-                # self.setMinimumSize(1170, 962)
+                self.setFixedSize(1211, 495)
+            elif 2 < len(self.__play_lst) <= 4:
+                self.widget.label_path.setFont(QtGui.QFont("Sans Serif", 10))
+                self.widget.label_fps.setFont(QtGui.QFont("Sans Serif", 10))
+                self.__grid_layout.addWidget(self.__frame, int(idx // 2), int(idx % 2))
+                self.setFixedSize(1026, 828)
+            elif 4 < len(self.__play_lst) <= 6:
                 self.widget.label_path.setFont(QtGui.QFont("Sans Serif", 9))
                 self.widget.label_fps.setFont(QtGui.QFont("Sans Serif", 9))
                 self.widget.label_remain_time.setFont(QtGui.QFont("Sans Serif", 7))
                 self.widget.label_current_time.setFont(QtGui.QFont("Sans Serif", 7))
                 self.__grid_layout.addWidget(self.__frame, int(idx // 3), int(idx % 3))
+                self.setFixedSize(1416, 787)
+            elif 6 < len(self.__play_lst) <= 9:
+                self.widget.label_path.setFont(QtGui.QFont("Sans Serif", 9))
+                self.widget.label_fps.setFont(QtGui.QFont("Sans Serif", 9))
+                self.widget.label_remain_time.setFont(QtGui.QFont("Sans Serif", 7))
+                self.widget.label_current_time.setFont(QtGui.QFont("Sans Serif", 7))
+                self.__grid_layout.addWidget(self.__frame, int(idx // 3), int(idx % 3))
+                self.setFixedSize(1170, 962)
             elif 9 < len(self.__play_lst):
-                # self.setMinimumSize(1452, 968)
                 self.widget.label_path.setFont(QtGui.QFont("Sans Serif", 8))
                 self.widget.label_fps.setFont(QtGui.QFont("Sans Serif", 8))
                 self.widget.label_remain_time.setFont(QtGui.QFont("Sans Serif", 6))
                 self.widget.label_current_time.setFont(QtGui.QFont("Sans Serif", 6))
                 self.__grid_layout.addWidget(self.__frame, int(idx // 4), int(idx % 4))
+                self.setFixedSize(1452, 970)
 
         rows = self.__grid_layout.rowCount()
         for row in range(rows):
@@ -155,6 +167,9 @@ class MultipleViewer(QtWidgets.QWidget):
         cols = self.__grid_layout.columnCount()
         for col in range(cols):
             self.__grid_layout.setColumnStretch(col, 1)
+
+    def resizeEvent(self, event):
+        print(self.size())
 
     def __slot_set_loop(self):
         if self.__btn_loop.isChecked():
@@ -207,14 +222,14 @@ class MultipleViewer(QtWidgets.QWidget):
 test_list = [
     "/home/rapa/Downloads/test1.MOV",
     "/home/rapa/Downloads/test2.MOV",
-    # "/home/rapa/Downloads/test_1280 (copy).mp4",
-    # "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    # "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    # "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    # "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    # "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    # "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    # "/home/rapa/Downloads/test_1280 (another copy).mp4",
+    "/home/rapa/Downloads/test_1280 (copy).mp4",
+    "/home/rapa/Downloads/test_1280 (another copy).mp4",
+    "/home/rapa/Downloads/test_1280 (another copy).mp4",
+    "/home/rapa/Downloads/test_1280 (another copy).mp4",
+    "/home/rapa/Downloads/test_1280 (another copy).mp4",
+    "/home/rapa/Downloads/test_1280 (another copy).mp4",
+    "/home/rapa/Downloads/test_1280 (another copy).mp4",
+    "/home/rapa/Downloads/test_1280 (another copy).mp4",
 ]
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

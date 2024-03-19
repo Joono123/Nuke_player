@@ -5,14 +5,6 @@
 # modified date : 2024.02.26
 # description   :
 
-# TODO: 누크 연동 시 Crash 발생하는 현상 수정 필요
-# TODO: UI에서 드래그가 되지 않는 것 수정 필요
-# TODO: View에서 우클릭 시 컨텍스트 메뉴가 발생하지 않음
-# TODO: Pushbutton에 아이콘이 적용되지 않음
-# TODO: slider 클릭 시 해당 부분으로 영상 포지션 이동
-# TODO: QWidget::paintEngine: Should no longer be called 에러 처리 필요 >> 무시해도 된다고 함
-
-
 import sys
 import importlib
 import os
@@ -25,7 +17,7 @@ import pathlib
 import mimetypes
 import platform
 
-sys.path.append("/home/rapa/workspace/python/Nuke_player/muliple_viewer.py")
+sys.path.append("/home/rapa/workspace/python/Nuke_player")
 import muliple_viewer
 
 from PySide2 import QtWidgets, QtGui, QtCore
@@ -41,19 +33,11 @@ importlib.reload(NP_model)
 importlib.reload(NP_Utils)
 importlib.reload(qt_lib)
 importlib.reload(sys_lib)
+importlib.reload(muliple_viewer)
 
 
-class CustomMessageBox(QtWidgets.QMessageBox):
-    def __init__(self, icon_path: str, parent=None):
-        super(CustomMessageBox, self).__init__(parent)
-        if icon_path == "":
-            pass
-        else:
-            self.setIconPixmap(QtGui.QPixmap.fromImage(QtGui.QImage(icon_path)))
-        self.setFont(QtGui.QFont("Sans Serif", 9))
-        self.setStyleSheet(
-            "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
-        )
+# class Raise_MessageBox:
+#     def __init__(self, error):
 
 
 class Nuke_Player(QtWidgets.QMainWindow):
@@ -81,8 +65,8 @@ class Nuke_Player(QtWidgets.QMainWindow):
         # 모델 설정
         self.__itemview_model = NP_model.NP_ItemModel(self.__thumb_lst, self.__file_lst)
         self.__item_listview.setModel(self.__itemview_model)
-        self.__listview_model = NP_model.NP_ListModel(self.__play_lst)
-        self.__text_listview.setModel(self.__listview_model)
+        self.__textview_model = NP_model.NP_ListModel(self.__play_lst)
+        self.__text_listview.setModel(self.__textview_model)
 
         # Init set
         self.__set_ui()
@@ -90,9 +74,6 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__connection()
 
         self.__item_listview.setIconSize(QtCore.QSize(229, 109))
-
-        # 프로그램 종료 시 임시파일 삭제
-        atexit.register(self.__cleanup)
 
     def __cleanup(self) -> None:
         """
@@ -132,9 +113,12 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
         # btns
         hbox_btn = QtWidgets.QHBoxLayout()
+        hbox_chg_idx = QtWidgets.QHBoxLayout()
         self.__adjust_size_1 = QtWidgets.QPushButton("", self)
         self.__adjust_size_2 = QtWidgets.QPushButton("", self)
         self.__adjust_size_3 = QtWidgets.QPushButton("", self)
+        self.__btn_idx_up = QtWidgets.QPushButton()
+        self.__btn_idx_down = QtWidgets.QPushButton()
         self.__adjust_size_1.setIcon(
             QtGui.QIcon("/home/rapa/workspace/python/Nuke_player/resource/png/1x1.png")
         )
@@ -143,6 +127,12 @@ class Nuke_Player(QtWidgets.QMainWindow):
         )
         self.__adjust_size_3.setIcon(
             QtGui.QIcon("/home/rapa/workspace/python/Nuke_player/resource/png/3x3.png")
+        )
+        self.__btn_idx_up.setIcon(
+            QtGui.QIcon(self.style().standardIcon(QtWidgets.QStyle.SP_ArrowUp))
+        )
+        self.__btn_idx_down.setIcon(
+            QtGui.QIcon(self.style().standardIcon(QtWidgets.QStyle.SP_ArrowDown))
         )
         self.__adjust_size_1.setCheckable(True)
         self.__adjust_size_2.setCheckable(True)
@@ -154,9 +144,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__adjust_size_1.setFixedSize(25, 25)
         self.__adjust_size_2.setFixedSize(25, 25)
         self.__adjust_size_3.setFixedSize(25, 25)
-        self.h_spacer = QtWidgets.QSpacerItem(
-            200, 25, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
-        )
+
         self.__btn_play = QtWidgets.QPushButton("Play")
         self.__btn_play.setFixedSize(70, 25)
         self.__btn_import = QtWidgets.QPushButton("Import")
@@ -190,21 +178,31 @@ class Nuke_Player(QtWidgets.QMainWindow):
         label_list.setAlignment(QtCore.Qt.AlignCenter)
         label_list.setFont(self.font_3)
 
+        # spacer
+        h_spacer = QtWidgets.QSpacerItem(
+            200, 25, QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
+        )
+
+        # set layouts
         hbox_btn.addWidget(self.__adjust_size_1)
         hbox_btn.addWidget(self.__adjust_size_2)
         hbox_btn.addWidget(self.__adjust_size_3)
         hbox_btn.addWidget(self.__lineEdit_debug)
-        # hbox_btn.addItem(self.h_spacer)
         hbox_btn.addWidget(self.__btn_import)
         hbox_btn.addWidget(self.__btn_play)
 
         hbox_checkBox.addWidget(check_label)
         hbox_checkBox.addWidget(self.__check_viewer)
 
+        hbox_chg_idx.addWidget(label_list)
+        hbox_chg_idx.addItem(h_spacer)
+        hbox_chg_idx.addWidget(self.__btn_idx_up)
+        hbox_chg_idx.addWidget(self.__btn_idx_down)
+
         vbox_1.addWidget(self.__item_listview)
         vbox_1.addLayout(hbox_checkBox)
         vbox_1.addLayout(hbox_btn)
-        vbox_2.addWidget(label_list)
+        vbox_2.addLayout(hbox_chg_idx)
         vbox_2.addWidget(self.__text_listview)
         main_hbox = QtWidgets.QHBoxLayout()
         main_hbox.addLayout(vbox_1)
@@ -312,14 +310,22 @@ class Nuke_Player(QtWidgets.QMainWindow):
         UI 상호작용 시 시그널 발생
         """
         # 버튼 클릭 시 시그널 발생
-        self.__adjust_size_1.clicked.connect(lambda: self.__update_icon_size(2, 75))
+        self.__adjust_size_1.clicked.connect(
+            lambda: self.__slot_adjust_icon_size(2, 75)
+        )
         self.__adjust_size_1.clicked.connect(lambda: self.__adjust_size_btn(1))
-        self.__adjust_size_2.clicked.connect(lambda: self.__update_icon_size(3, 51))
+        self.__adjust_size_2.clicked.connect(
+            lambda: self.__slot_adjust_icon_size(3, 51)
+        )
         self.__adjust_size_2.clicked.connect(lambda: self.__adjust_size_btn(2))
-        self.__adjust_size_3.clicked.connect(lambda: self.__update_icon_size(4, 40))
+        self.__adjust_size_3.clicked.connect(
+            lambda: self.__slot_adjust_icon_size(4, 40)
+        )
         self.__adjust_size_3.clicked.connect(lambda: self.__adjust_size_btn(3))
         self.__btn_play.clicked.connect(self.__slot_play_videos)
         self.__btn_import.clicked.connect(self.__slot_import_on_nuke)
+        self.__btn_idx_up.clicked.connect(lambda: self.__slot_chg_text_idx("up"))
+        self.__btn_idx_down.clicked.connect(lambda: self.__slot_chg_text_idx("down"))
 
         # 드래그 or 드랍 시 시그널 발생
         self.__item_listview.dragEnterEvent = self.__dragEnter_items
@@ -335,6 +341,9 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.help_1.triggered.connect(self.__slot_whats_this)
         self.help_2.triggered.connect(self.__slot_shortcut)
 
+    def closeEvent(self, event):
+        self.__cleanup()
+
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         if event.key() == QtCore.Qt.Key_F1:
             self.__adjust_size_1.click()
@@ -346,17 +355,11 @@ class Nuke_Player(QtWidgets.QMainWindow):
             self.__adjust_size_3.click()
             self.__adjust_size_btn(3)
         elif event.key() == QtCore.Qt.Key_Delete:
-            # selected_idx = self.__item_listview.selectedIndexes()
-            # for index in selected_idx:
-            #     self.__slot_del_file(index.row())
             self.__slot_del_file()
-            self.__item_listview.clearSelection()
         elif event.key() == QtCore.Qt.Key_V:
             if self.__check_viewer.isChecked():
-                print("v")
                 self.__check_viewer.setChecked(False)
             else:
-                print("V")
                 self.__check_viewer.setChecked(True)
         elif event.key() == QtCore.Qt.Key_I:
             self.__slot_import_on_nuke()
@@ -366,14 +369,6 @@ class Nuke_Player(QtWidgets.QMainWindow):
             QtCore.Qt.Key_P,
         ]:
             self.__slot_play_videos()
-
-    def __mouseDrag_list(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
-            drag = QtGui.QDrag(self)
-            mime_data = QtCore.QMimeData()
-            mime_data.setText("hi")
-            drag.setMimeData(mime_data)
-            drag.exec_(QtCore.Qt.MoveAction)
 
     def __dragEnter_list(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasText():
@@ -463,16 +458,13 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 self.__thumb_lst, self.__file_lst
             )
             self.__item_listview.setModel(self.__itemview_model)
-            # print(f'\033[32m{self.__file_data}\n파일 불러오기 완료\033[0m')
 
             # 아이템 선택 시 시그널 발생
             self.__item_listview.selectionModel().selectionChanged.connect(
-                self.__slot_icon_idxs
+                self.__slot_selection_item
             )
-            self.__lineEdit_debug.setText("로드 완료")
-            print(
-                f"thumb_list: {self.__thumb_lst}\nfile_lst: {self.__file_lst}\nfile_data: {self.__file_data}"
-            )
+
+            self.__lineEdit_debug.setText("파일을 선택하세요")
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -500,96 +492,174 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 continue
             # self.__NP_util.NP_Utils.extract_thumbnail(f_path, file_name, '1920x1080')
             self.__NP_util.NP_Utils.extract_thumbnail_subprocess(
-                f_path, file_name, "1920x1080"
+                f_path, file_name, "1280x720"
             )
 
-    # def __slot_del_file(self, row):
-    #     print("del")
-    #     self.__itemview_model.removeRow(row)
-    #     self.__itemview_model.dataChanged.emit(
-    #         QtCore.QModelIndex(), QtCore.QModelIndex()
-    #     )
     def __slot_del_file(self):
+        """
+        선택된 아이템의 데이터 삭제 후 모델 갱신
+        """
+        del_lst = []
+        # 아이템이 선택되지 않은 경우 예외 처리
         if not self.__play_lst:
             self.__lineEdit_debug.setText("ERROR: 삭제할 파일이 선택되지 않았습니다")
+            self.__slot_messagebox("Delete")
             return
         selected_idx = self.__item_listview.selectedIndexes()
-        print(f"selected_idx: {selected_idx}")
         for f_path in self.__play_lst[:]:
+            # 리스트에 추가
+            del_lst.append(os.path.basename(f_path))
+
             # 썸네일 삭제
-            print("-" * 50)
-            print(f"f_path: {f_path}")
-            print("\n")
             thumbs = os.path.splitext(os.path.basename(f_path))[0] + ".jpg"
             thumbs_path = os.path.join(self.thumb_dir, thumbs)
             if os.path.exists(thumbs_path):
-                # 실제 파일 제거
+                # 썸네일 제거
                 os.remove(thumbs_path)
-                print("-" * 30, "Removed", "-" * 30)
-                print(f"thumb Removed: {thumbs} >> {thumbs_path}")
-                # 리스트 내 데이터 제거
-
                 # 썸네일 리스트 제거
                 self.__thumb_lst.remove(thumbs_path)
-                print(f"thumb_lst Removed: {thumbs_path} >> {self.__thumb_lst}")
                 # 파일 데이터 제거
                 self.__file_data = self.delete_key_from_value(self.__file_data, f_path)
-                print(f"file_data Removed: {f_path} >> {self.__file_data}")
                 # 파일 리스트 재정의
                 self.__file_lst = list(self.__file_data.values())
-                # 플레이 리스트 제거
-                # print(f"play_lst Removed: {f_path} >> {self.__play_lst}")
-                # self.__play_lst.remove(f_path)
-
             else:
-                print("파일이 존재하지 않습니다.")
+                self.__lineEdit_debug.setText("ERROR: 삭제할 파일이 존재하지 않습니다")
+                self.__slot_messagebox("File")
+                return
 
             for idx in selected_idx:
-                print(idx.row())
+                # 모델 Row값 삭제
                 self.__itemview_model.removeRow(idx.row())
+                # 선택 초기화
                 self.__item_listview.clearSelection()
+                # 플레이 리스트 초기화
                 self.__play_lst.clear()
+                # UI 새로고침
                 self.__itemview_model.layoutChanged.emit()
+        self.__lineEdit_debug.setText(f"{len(del_lst)}개 항목 삭제됨")
 
-    def __slot_messagebox(self, btn: str):
-        box = CustomMessageBox(self.__icon_error)
-        box.setWindowTitle(f"{btn} Error")
-        if btn == "Play":
+    def __slot_chg_text_idx(self, move: str):
+        """
+        :param move: 순서를 변경할 방향
+        플레이 리스트의 순서를 위, 아래로 변경
+        """
+        selected_indexes = self.__text_listview.selectionModel().selectedIndexes()
+        # 아이템이 선택되지 않은 경우 예외 처리
+        if not selected_indexes:
+            self.__lineEdit_debug.setText("ERROR: 순서를 변경할 파일을 선택하세요")
+            self.__slot_messagebox("Move")
+            return
+
+        select_idx = selected_indexes[0].row()
+        # 위로 이동하는 버튼을 누른 경우
+        if move == "up":
+            # 선택한 아이템의 인덱스가 0일 경우 예외 처리
+            if select_idx == 0:
+                return
+            # 플레이 리스트의 순서 변경
+            self.__play_lst[select_idx - 1], self.__play_lst[select_idx] = (
+                self.__play_lst[select_idx],
+                self.__play_lst[select_idx - 1],
+            )
+            # 모델 갱신 후 아이템 재선택
+            self.__textview_model = NP_model.NP_ListModel(self.__play_lst)
+            self.__text_listview.setModel(self.__textview_model)
+            if select_idx is not None:
+                model_index = self.__textview_model.index(select_idx - 1, 0)
+                self.__text_listview.selectionModel().setCurrentIndex(
+                    model_index, QtCore.QItemSelectionModel.ClearAndSelect
+                )
+        # 아래로 이동하는 버튼을 누른 경우
+        elif move == "down":
+            # 선택한 아이템의 인덱스가 마지막일 경우 예외 처리
+            if select_idx == len(self.__play_lst) - 1:
+                return
+            # 플레이 리스트의 순서 변경
+            self.__play_lst[select_idx], self.__play_lst[select_idx + 1] = (
+                self.__play_lst[select_idx + 1],
+                self.__play_lst[select_idx],
+            )
+            # 모델 갱신 후 아이템 재선택
+            self.__textview_model = NP_model.NP_ListModel(self.__play_lst)
+            self.__text_listview.setModel(self.__textview_model)
+            if select_idx is not None:
+                model_index = self.__textview_model.index(select_idx + 1, 0)
+                self.__text_listview.selectionModel().setCurrentIndex(
+                    model_index, QtCore.QItemSelectionModel.ClearAndSelect
+                )
+
+    def __slot_messagebox(self, error: str):
+        """
+        :param error: 에러 코드
+        에러 코드를 인자로 받아 특정 에러를 메시지 박스로 발생시킴
+        Close 버튼만 존재
+        """
+        box = self.__NP_util.CustomMessageBox(self.__icon_error)
+        box.setWindowTitle(f"{error} Error")
+        if error == "Play":
             box.setText("\n재생할 파일을 선택하세요")
             box.exec_()
-        elif btn == "Import":
+        elif error == "Import":
             box.setText("\n삽입할 파일을 선택하세요")
             box.exec_()
-        elif btn == "Open":
+        elif error in ["Open", "Delete"]:
             box.setText("\n파일이 선택되지 않았습니다")
             box.exec_()
-        elif btn == "Directory":
+        elif error == "Directory":
             box.setText("\n디렉토리가 존재하지 않습니다")
             box.exec_()
+        elif error == "File":
+            box.setText("\n파일이 존재하지 않습니다")
+            box.exec_()
+        elif error == "Move":
+            box.setText("\n순서를 변경할 파일을 선택하세요")
+            box.exec_()
+        elif error == "Playlist":
+            box.setText("\n멀티 뷰어는 최대 12개의 영상까지만 재생할 수 있습니다")
+            box.exec_()
+
+    def __slot_play_alert(self, error):
+        """
+        :param error: 에러 코드
+        에러 코드를 인자로 받아 특정 에러를 메시지 박스로 발생시킴
+        Ignore, No버튼에 따라 bool 반환
+        """
+        if error == "Resolution":
+            box = self.__NP_util.QuestionMessageBox(self.__icon_error)
+            box.setWindowTitle("Resolution Warning")
+            box.setText(
+                "\n4K 이상의 영상을 멀티 뷰어로 재생할 경우 프레임 드랍이 발생할 수 있습니다."
+                "\n싱글 뷰어로 재생하는 것을 권장합니다."
+            )
+            res = box.exec_()
+            if res:
+                return True
+            else:
+                return False
 
     def __slot_whats_this(self):
-        box = CustomMessageBox(self.__icon_info)
+        box = self.__NP_util.CustomMessageBox(self.__icon_info)
         box.setWindowTitle("Multiple Video Player")
         box.setText(
             "\n"
             "드래그 앤 드롭을 활용해 영상 등록 후\n"
-            "손 쉽게 노드 생성이 가능한 멀티 비디오 플레이어.\n"
-            "용량이 큰 파일의 경우 다중 재생이 어려울 수 있음."
+            "손 쉽게 노드 생성이 가능한 멀티 비디오 플레이어\n"
+            "해상도가 높은 파일의 경우 다중 재생이 어려울 수 있음"
         )
         box.exec_()
 
     def __slot_shortcut(self):
-        box = CustomMessageBox("")
+        box = self.__NP_util.CustomMessageBox("")
         box.setWindowTitle("Keyboard Shortcut")
         box.setText(
-            "             <Main UI>\n"
-            "[F1 ~ F3]  아이콘 크기 조절\n"
-            "[Delete]    등록된 영상 삭제\n"
-            "[V]            체크박스 선택/해제\n"
-            "[I]             GCC툴에 영상 삽입\n"
-            "[Enter, P]  영상 재생\n"
+            "               <Main UI>\n"
+            "[F1 ~ F3]            아이콘 크기 조절\n"
+            "[Delete]              등록된 영상 삭제\n"
+            "[V]                      체크박스 선택/해제\n"
+            "[I]                       GCC툴에 영상 삽입\n"
+            "[Enter, P]            영상 재생\n"
             "\n"
-            "         <Single Viewer>\n"
+            "           <Single Viewer>\n"
             "[Up, Space, K]    재생 / 일시정지\n"
             "[Right, L]            맨 끝으로 이동\n"
             "[Left, J]               맨 앞으로 이동\n"
@@ -640,8 +710,10 @@ class Nuke_Player(QtWidgets.QMainWindow):
             )
             menu.setFont(font)
             act_1 = menu.addAction("Open in Dir")
+            act_2 = menu.addAction("Delete")
             # act_1.triggered.connect(lambda: self.__slot_open_in_dir(idx))
             act_1.triggered.connect(self.__slot_open_in_dir)
+            act_2.triggered.connect(self.__slot_del_file)
             menu.exec_(self.__item_listview.mapToGlobal(point))
 
     def __slot_open_in_dir(self):
@@ -674,7 +746,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
             opened_dir.append(video_dir)
 
-    def __slot_icon_idxs(
+    def __slot_selection_item(
         self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection
     ) -> None:
         # 선택된 아이템을 리스트에 추가
@@ -683,10 +755,6 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 continue
             f_path = self.__file_data.get(idx.row())
             if f_path not in self.__play_lst:
-                if len(self.__play_lst) > 11:
-                    print("재생 목록은 최대 12개까지 추가할 수 있습니다.")
-                    self.__lineEdit_debug.setText("재생 목록은 최대 12개까지 추가할 수 있습니다.")
-                    return
                 self.__play_lst.append(f_path)
                 self.__play_lst_basename.append(os.path.basename(f_path))
 
@@ -699,57 +767,84 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 self.__play_lst.remove(f_path)
                 self.__play_lst_basename.remove(os.path.basename(f_path))
 
-        self.__listview_model = NP_model.NP_ListModel(self.__play_lst)
-        self.__text_listview.setModel(self.__listview_model)
-        if len(self.__play_lst_basename):
-            self.__lineEdit_debug.setText(
-                f'선택된 파일: {", ".join(self.__play_lst_basename)}'
-            )
-            if len(self.__lineEdit_debug.text()) > 60:
-                self.__lineEdit_debug.setText(
-                    f"선택된 파일: {self.__play_lst_basename[0]} 외 "
-                    f"{len(self.__play_lst_basename) - 1}개"
-                )
-        else:
-            self.__lineEdit_debug.setText("재생할 영상을 선택하세요.")
+        self.__textview_model = NP_model.NP_ListModel(self.__play_lst)
+
+        # 텍스트 선택 시 시그널 발생
+        self.__text_listview.setModel(self.__textview_model)
 
     def __slot_play_videos(self):
+        # 플레이 리스트가 없는 경우 예외 처리
         if len(self.__play_lst):
             pass
         else:
             self.__lineEdit_debug.setText("ERROR: 재생할 영상이 선택되지 않았습니다")
             self.__slot_messagebox("Play")
             return
+
+        # 선택된 영상의 수 및 체크박스 선택 여부에 따라 플레이어 설정
         if self.__check_viewer.isChecked() and len(self.__play_lst) == 1:
             self.__sing_vw = self.__NP_util.VideoWidget(self.__play_lst)
             self.__sing_vw.show()
-
-        elif self.__check_viewer.isChecked() and len(self.__play_lst) > 1:
-            self.__mult_vw = muliple_viewer.MultipleViewer(self.__play_lst)
-            self.__mult_vw.show()
 
         elif not self.__check_viewer.isChecked():
             self.__sing_vw = self.__NP_util.VideoWidget(self.__play_lst)
             self.__sing_vw.show()
 
+        # 멀티 뷰어로 재생
+        elif self.__check_viewer.isChecked() and len(self.__play_lst) > 1:
+            # 플레이 리스트가 13개 이상인 경우 return
+            if len(self.__play_lst) > 12:
+                self.__lineEdit_debug.setText("멀티 뷰어는 최대 12개의 영상까지 지원합니다")
+                self.__slot_messagebox("Playlist")
+                return
+
+            # 해상도가 높은 파일의 개수 확인
+            over_lst = []
+            for f_path in self.__play_lst:
+                total_pixel = self.__NP_util.NP_Utils.get_video_resolution(f_path)
+                if total_pixel > 8294000:
+                    over_lst.append(total_pixel)
+            # 4k 해상도의 영상이 존재하는 경우 알림 발생
+            if len(over_lst) and len(self.__play_lst) > 1:
+                if not self.__slot_play_alert("Resolution"):
+                    return
+            self.__mult_vw = muliple_viewer.MultipleViewer(self.__play_lst)
+            self.__mult_vw.show()
+
     def __slot_import_on_nuke(self):
+        """
+        선택된 영상을 누크에서 일정한 간격의 Read 노드로 삽입
+        """
         if len(self.__play_lst):
+            node_gap = 100
+            x_position = 100
+            y_position = 0
             for v_path in self.__play_lst:
                 read_node = nuke.createNode("Read")
                 read_node["file"].fromUserText(v_path)
+                # 노드 위치 설정
+                read_node.setXpos(x_position)
+                read_node.setYpos(y_position)
+                # 다음 노드의 Y 위치 설정
+                x_position += node_gap
                 print(v_path)
         else:
             self.__lineEdit_debug.setText("ERROR: 삽입할 영상이 선택되지 않았습니다")
             self.__slot_messagebox("Import")
             return
 
-    def __update_icon_size(self, aspect, adjust) -> None:
+    def __slot_adjust_icon_size(self, aspect, adjust) -> None:
+        """
+        :param aspect: 전체 위젯 크기 대비 비율
+        :param adjust: 미세 조정을 위한 값
+        크기 조정 버튼에 따른 아이콘 크기 재설정
+        """
         main_size = self.size()
         icon_w = int(main_size.width() / aspect - adjust)
         icon_h = int(main_size.height() / aspect - adjust)
         self.__item_listview.setIconSize(QtCore.QSize(icon_w, icon_h))
         if aspect == 2:
-            self.__item_listview.setFont(QtGui.QFont("Sans Serif", 11))
+            self.__item_listview.setFont(QtGui.QFont("Sans Serif", 10))
             self.__adjust_size_1.setEnabled(False)
             self.__adjust_size_2.setEnabled(True)
             self.__adjust_size_3.setEnabled(True)
@@ -772,7 +867,6 @@ class Nuke_Player(QtWidgets.QMainWindow):
         :return: 찾은 value가 존재하는 key값을 삭제한 후 index를 재부여한 딕셔너리
         ex) {0: 123, 1: 456, 2: 789} >>> value = 456 >>> {0: 123, 1: 789}
         """
-        # print(f"origin: {dictionary}")
         keys_to_del = []
         new_dict = dict()
         for key, val in dictionary.items():
@@ -782,7 +876,6 @@ class Nuke_Player(QtWidgets.QMainWindow):
             del dictionary[key]
         for idx, val in enumerate(list(dictionary.values())):
             new_dict[idx] = val
-        # print(f"new: {new_dict}")
         return new_dict
 
 

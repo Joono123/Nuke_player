@@ -1,7 +1,8 @@
 import os
 import sys
 import shlex
-import orjson
+
+# import orjson
 import typing
 import pathlib
 import threading
@@ -139,18 +140,18 @@ class System:
             return 127
         return exitcode
 
-    @staticmethod
-    def save_json_file(filepath: pathlib.Path, data: typing.Dict) -> None:
-        bytes_data = orjson.dumps(
-            data, option=orjson.OPT_SORT_KEYS | orjson.OPT_INDENT_2
-        )
-        with filepath.open(mode="wb") as fp:
-            fp.write(bytes_data)
-
-    @staticmethod
-    def load_json_file(filepath: pathlib.Path) -> typing.Dict:
-        if not filepath.exists():
-            return dict()
-        with filepath.open(mode="rb") as fp:
-            bytes_data = fp.read()
-        return orjson.loads(bytes_data)
+    # @staticmethod
+    # def save_json_file(filepath: pathlib.Path, data: typing.Dict) -> None:
+    #     bytes_data = orjson.dumps(
+    #         data, option=orjson.OPT_SORT_KEYS | orjson.OPT_INDENT_2
+    #     )
+    #     with filepath.open(mode="wb") as fp:
+    #         fp.write(bytes_data)
+    #
+    # @staticmethod
+    # def load_json_file(filepath: pathlib.Path) -> typing.Dict:
+    #     if not filepath.exists():
+    #         return dict()
+    #     with filepath.open(mode="rb") as fp:
+    #         bytes_data = fp.read()
+    #     return orjson.loads(bytes_data)

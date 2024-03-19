@@ -14,7 +14,6 @@ import subprocess
 
 sys.path.append("/home/rapa/libs_nuke")
 import ffmpeg
-import cv2
 import time
 from PySide2 import QtWidgets, QtCore, QtGui, QtMultimediaWidgets, QtMultimedia
 
@@ -82,11 +81,66 @@ class NP_Utils:
         subprocess.Popen([vlc_path, video_path], shell=True)
 
     @staticmethod
-    def get_video_fps(video_path: str):
-        cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        cap.release()
-        return fps
+    def get_video_fps(file_path: str):
+        probe = ffmpeg.probe(file_path)
+        video_info = next(
+            stream for stream in probe["streams"] if stream["codec_type"] == "video"
+        )
+        fps_str = video_info["avg_frame_rate"]
+        numerator, denominator = map(int, fps_str.split("/"))
+        return numerator / denominator
+
+    @staticmethod
+    def get_video_resolution(file_path: str):
+        probe = ffmpeg.probe(file_path)
+        video_stream = next(
+            (stream for stream in probe["streams"] if stream["codec_type"] == "video"),
+            None,
+        )
+        width = int(video_stream["width"])
+        height = int(video_stream["height"])
+        # print(f"Video Reslution: {width} x {height}")
+        val = width * height
+        # print(f"Total Pixels: {val}")
+        return val
+
+
+###########################################################################################
+
+
+class CustomMessageBox(QtWidgets.QMessageBox):
+    def __init__(self, icon_path: str, parent=None):
+        super(CustomMessageBox, self).__init__(parent)
+        if icon_path == "":
+            pass
+        else:
+            self.setIconPixmap(QtGui.QPixmap.fromImage(QtGui.QImage(icon_path)))
+        self.setFont(QtGui.QFont("Sans Serif", 9))
+        self.setStyleSheet(
+            "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
+        )
+        self.setStandardButtons(QtWidgets.QMessageBox.Close)
+
+
+class QuestionMessageBox(QtWidgets.QMessageBox):
+    def __init__(self, icon_path: str, parent=None):
+        super(QuestionMessageBox, self).__init__(parent)
+        if icon_path == "":
+            pass
+        else:
+            self.setIconPixmap(QtGui.QPixmap.fromImage(QtGui.QImage(icon_path)))
+        self.setFont(QtGui.QFont("Sans Serif", 9))
+        self.setStyleSheet(
+            "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
+        )
+
+        self.addButton(QtWidgets.QMessageBox.No)
+        self.addButton(QtWidgets.QMessageBox.Ignore)
+        self.setDefaultButton(QtWidgets.QMessageBox.No)
+
+    def exec_(self):
+        res = super().exec_()
+        return res == QtWidgets.QMessageBox.Ignore
 
 
 ###########################################################################################
@@ -544,6 +598,7 @@ class VideoWidget(QtWidgets.QWidget):
 
 
 t_path = ["/home/rapa/Downloads/test1.MOV"]
+t_path_str = "/home/rapa/Downloads/test1.MOV"
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

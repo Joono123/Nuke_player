@@ -1,13 +1,19 @@
 import sys
 import os
 import time
+import importlib
 
 sys.path.append("/home/rapa/libs_nuke")
-import cv2
+import ffmpeg
 import uuid
 from PySide2 import QtWidgets, QtGui, QtMultimediaWidgets, QtCore, QtMultimedia
 from library import NP_Utils
 from library.qt import library as qt_lib
+from library import dragdrop_overlay
+
+importlib.reload(NP_Utils)
+importlib.reload(qt_lib)
+importlib.reload(dragdrop_overlay)
 
 
 class Thread_Updater(QtCore.QThread):
@@ -72,32 +78,21 @@ class VideoWidget(QtWidgets.QWidget):
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
-            # print(event.mimeData().urls())
-            self.__overlay_frame.hide()
             event.acceptProposedAction()
         else:
             event.ignore()
 
     def dropEvent(self, event):
         if event.mimeData().hasUrls():
-            self.__overlay_frame.hide()
             event.acceptProposedAction()
         else:
             event.ignore()
 
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
-            self.setCursor(self.custom_cursor)
-            # print(event.mimeData().urls())
-            self.__overlay_frame.show()
             event.acceptProposedAction()
         else:
             event.ignore()
-
-        # def dragLeaveEvent(self, event):
-        self.setCursor(QtGui.QCursor(QtCore.Qt.ArrowCursor))
-
-    #     self.__overlay_frame.show()
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
@@ -106,11 +101,6 @@ class VideoWidget(QtWidgets.QWidget):
             mime_data.setUrls([QtCore.QUrl(self.__video_path)])
             drag.setMimeData(mime_data)
             drag.exec_(QtCore.Qt.CopyAction)
-            # self.setCursor(self.custom_cursor)
-
-    # def mouseReleaseEvent(self, event):
-    #     if event.button() == QtCore.Qt.LeftButton:
-    #         self.__overlay_frame.hide()
 
     def closeEvent(self, event):
         self.player.stop()
@@ -122,7 +112,6 @@ class VideoWidget(QtWidgets.QWidget):
         self.setStyleSheet(
             "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
         )
-        self.setAcceptDrops(True)
 
         # 플레이어 설정
         self.player = QtMultimedia.QMediaPlayer(
@@ -143,24 +132,6 @@ class VideoWidget(QtWidgets.QWidget):
         font2 = QtGui.QFont("Sans Serif", 9)
         font3 = QtGui.QFont("Sans Serif", 15)
         font2.setBold(True)
-
-        # cursor
-        self.label_cursor = QtWidgets.QLabel("Custom Cursor")
-        self.label_cursor.setStyleSheet("color: white; background-color: black;")
-        self.label_cursor.setAlignment(QtCore.Qt.AlignCenter)
-
-        pixmap = QtGui.QPixmap(100, 50)
-        pixmap.fill(QtCore.Qt.transparent)
-
-        painter = QtGui.QPainter(pixmap)
-        self.label_cursor.render(painter, QtCore.QPoint(0, 0))
-        painter.end()
-
-        # 커스텀 커서 생성
-        self.custom_cursor = QtGui.QCursor(pixmap)
-
-        # 일반 커서 설정
-        self.setCursor(QtCore.Qt.ArrowCursor)
 
         # btns
         self.__btn_play = QtWidgets.QPushButton()
@@ -218,17 +189,6 @@ class VideoWidget(QtWidgets.QWidget):
         self.label_current_time.setText("00:00:00 / 00:00:00")
         self.label_current_time.setFont(font)
 
-        # Overlay Frame(test)
-        label_overlay = QtWidgets.QLabel("Drop on NUKE")
-        label_overlay.setFont(font3)
-        self.__overlay_frame = QtWidgets.QFrame(self)
-        self.__overlay_frame.setLayout(QtWidgets.QVBoxLayout())
-        self.__overlay_frame.layout().setAlignment(QtCore.Qt.AlignCenter)
-        self.__overlay_frame.layout().addWidget(label_overlay)
-        self.__overlay_frame.setStyleSheet("background-color: rgba(50, 50, 255, 70);")
-        self.__overlay_frame.setGeometry(self.geometry())
-        self.__overlay_frame.hide()
-
         # slider
         self.__slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.__slider.setRange(0, 0)
@@ -264,7 +224,6 @@ class VideoWidget(QtWidgets.QWidget):
 
         self.player.setVideoOutput(v_widget)
         self.setLayout(vbox)
-        self.__overlay_frame.raise_()
 
     def __connections(self):
         self.__btn_play.clicked.connect(self.slot_play_video)
@@ -277,10 +236,6 @@ class VideoWidget(QtWidgets.QWidget):
         self.player.durationChanged.connect(self.__slot_duration_changed)
 
     def slot_fullscreen(self):
-        # if not self.isFullScreen():
-        #     self.showFullScreen()
-        # else:
-        #     self.showNormal()
         vw = self.__NP_Util.VideoWidget([self.__video_path])
         vw.show()
 
@@ -372,13 +327,10 @@ class VideoWidget(QtWidgets.QWidget):
         remain_time_str = remain_time.toString("hh:mm:ss")
 
         if self.btn_mode.text() == "fps":
-            # self.label_remain_time.setText(str(remain_frames))
-            # self.label_current_time.setText(f"{current_frames} / {total_frames}")
+            # pass
             self.label_remain_time.setText(f"{total_frames}")
             self.label_current_time.setText(f"{current_frames}")
         elif self.btn_mode.text() == "tc":
-            # self.label_remain_time.setText(remain_time_str)
-            # self.label_current_time.setText(f"{current_time_str} / {total_time_str}")
             self.label_remain_time.setText(f"{total_time_str}")
             self.label_current_time.setText(f"{current_time_str}")
 
@@ -392,11 +344,14 @@ class VideoWidget(QtWidgets.QWidget):
             return fps
 
     @staticmethod
-    def get_video_fps(video_path: str):
-        cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        cap.release()
-        return fps
+    def get_video_fps(file_path):
+        probe = ffmpeg.probe(file_path)
+        video_info = next(
+            stream for stream in probe["streams"] if stream["codec_type"] == "video"
+        )
+        fps_str = video_info["avg_frame_rate"]
+        numerator, denominator = map(int, fps_str.split("/"))
+        return numerator / denominator
 
 
 test_path = "/home/rapa/Downloads/test1.MOV"
