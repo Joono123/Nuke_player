@@ -2,8 +2,11 @@
 # encoding=utf-8
 # author        : Juno Park
 # created date  : 2024.02.26
-# modified date : 2024.02.26
-# description   :
+# modified date : 2024.03.21
+# description   : 누크에서 작업을 시작하기 전, 다양한 소스를 동시에 확인하는 것에 어려움이 있는데,
+#                 이러한 불편함을 해소하고자, 유저 친화적인 플레이어를 제작.
+#                 드래그앤드랍으로 간편하게 소스를 등록하고, 영상을 재생하며,
+#                 소스를 확인하는 동시에 DCC툴의 노드로 불러오는 것이 가능함.
 
 import sys
 import importlib
@@ -12,7 +15,6 @@ import os
 os.environ["NUKE_INTERACTIVE"] = "1"
 import nuke
 import shutil
-import atexit
 import pathlib
 import mimetypes
 import platform
@@ -36,8 +38,66 @@ importlib.reload(sys_lib)
 importlib.reload(muliple_viewer)
 
 
-# class Raise_MessageBox:
-#     def __init__(self, error):
+class FileProcessingThread(QtCore.QThread):
+    thumbnail_extract = QtCore.Signal()
+    finished = QtCore.Signal()
+
+    def __init__(self, file_data: dict, thumbnail_dir: str):
+        super().__init__()
+        self.__file_data = file_data
+        self.__thumb_dir = thumbnail_dir
+        self.__NP_util = NP_Utils
+        self.__cancled = False
+
+    def run(self):
+        total_files = len(self.__file_data)
+        completed = 0
+        for idx, f_path in self.__file_data.items():
+            if self.__cancled:
+                break
+            base_name = os.path.splitext(os.path.basename(f_path))[0]
+            file_name = self.__thumb_dir + "/" + base_name + ".jpg"
+            if os.path.exists(file_name):
+                completed += 1
+                continue
+            self.__NP_util.NP_Utils.extract_thumbnail(f_path, file_name, "1280x720")
+            self.thumbnail_extract.emit()
+            completed += 1
+            if total_files == completed:
+                break
+        self.finished.emit()
+
+    def stop(self):
+        self.quit()
+        self.wait(10000)
+        print("\n\033[31m백그라운드 스레드 정상 종료\033[0m")
+
+    def cancel(self):
+        self.__cancled = True
+        print("\n\033[31m파일 로드 취소됨\033[0m")
+
+
+class LoadingDialog(QtWidgets.QProgressDialog):
+    def __init__(self, total_files, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Loading")
+        self.setLabelText("파일을 로드 중입니다.")
+        self.setFixedSize(300, 100)
+        self.setRange(0, total_files)
+        self.setValue(0)
+        self.setFont(QtGui.QFont("Sans Serif", 9))
+        self.setStyleSheet(
+            "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
+        )
+        self.setModal(True)
+
+    def increase_value(self):
+        self.setValue(self.value() + 1)
+
+    def reject(self):
+        # 취소 버튼을 눌렀을 때 시그널 발생
+        self.canceled.emit()
+        super().reject()
 
 
 class Nuke_Player(QtWidgets.QMainWindow):
@@ -51,10 +111,10 @@ class Nuke_Player(QtWidgets.QMainWindow):
         # 썸네일을 임시 저장할 상대경로 설정
         # self.current_dir = os.path.dirname(__file__)
         self.home_dir = os.path.expanduser("~")
-        self.thumb_dir = os.path.join(self.home_dir, ".NP_thumbnails")  # -> 숨김 상태로 생성
+        self.__thumb_dir = os.path.join(self.home_dir, ".NP_thumbnails")  # -> 숨김 상태로 생성
 
         # 해당 디렉토리가 없을 경우 생성
-        self.__NP_util.NP_Utils.make_dir(self.thumb_dir)
+        self.__NP_util.NP_Utils.make_dir(self.__thumb_dir)
 
         self.__file_data = dict()  # {인덱스: 원본 파일 경로}의 형태로 데이터 저장
         self.__file_lst = list()  # file_data의 value값을 리스트로 저장
@@ -73,6 +133,8 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__set_menu()
         self.__connection()
 
+        # 스레드 생성 및 실행
+        self.__thumb_thread = FileProcessingThread(self.__file_data, self.__thumb_dir)
         self.__item_listview.setIconSize(QtCore.QSize(229, 109))
 
     def __cleanup(self) -> None:
@@ -80,11 +142,11 @@ class Nuke_Player(QtWidgets.QMainWindow):
         프로그램이 종료될 때 임시 디렉토리를 삭제
         """
         try:
-            shutil.rmtree(self.thumb_dir)
-            print(f"\033[32m\n임시 디렉토리 '{self.thumb_dir}'가 성공적으로 삭제되었습니다.\033[0m")
+            shutil.rmtree(self.__thumb_dir)
+            print(f"\033[32m\n임시 디렉토리 '{self.__thumb_dir}'가 성공적으로 삭제되었습니다.\033[0m")
         except Exception as err:
             print(
-                f"\033[31m\nERROR: 임시 디렉토리 '{self.thumb_dir}'를 삭제하는 동안 오류가 발생했습니다:\033[0m",
+                f"\033[31m\nERROR: 임시 디렉토리 '{self.__thumb_dir}'를 삭제하는 동안 오류가 발생했습니다:\033[0m",
                 err,
             )
 
@@ -342,6 +404,9 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.help_2.triggered.connect(self.__slot_shortcut)
 
     def closeEvent(self, event):
+        if self.__thumb_thread.isRunning():
+            self.__thumb_thread.stop()
+            self.__thumb_thread.wait()
         self.__cleanup()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
@@ -409,91 +474,77 @@ class Nuke_Player(QtWidgets.QMainWindow):
         else:
             event.ignore()
 
-    def __drop_items(self, event: QtGui.QDropEvent) -> None:
+    def __drop_items(self, event: QtGui.QDropEvent):
         """
         ListView내에서 드롭되었을 경우 해당 데이터의 URL(파일 경로)을
-        딕셔너리에 저장 후 각 파일의 썸네일을 추출하여 임시 디렉토리에 저장
+        딕셔너리에 저장 후 각 파일의 썸네일을 추출하여 임시 디렉토리에 저장하고
         모델에서 데이터를 다시 로드하여 UI를 새로 불러옴
+        썸네일 추출의 경우 스레드를 통해 백그라운드에서 진행
         """
-        self.__lineEdit_debug.setText("파일 로드 중")
         if event.mimeData().hasUrls():
             event.setDropAction(QtCore.Qt.CopyAction)
             urls = event.mimeData().urls()
 
-            # 1개 이상의 파일이 드롭 되는 경우, idx와 url을 딕셔너리에 저장
+            file_dropped = False  # 파일이 드롭되었는지 확인하기 위한 변수
+            # 파일 경로 저장
             for idx, url in enumerate(urls):
                 file_path = url.toLocalFile()
                 url_str = url.toString()
-                # 드롭한 파일이 비디오 형식이 맞는지 확인
                 if not self.__is_file_video(url_str):
                     print(f"\033[31mERROR: '{file_path}'는 지원하지 않는 형식입니다.\033[0m")
                     return
-                else:
-                    pass
-                # 딕셔너리 안에 이미 파일 경로가 존재할 경우
+
                 if file_path in self.__file_data.values():
                     print(f"\033[31mERROR: '{file_path}'가 이미 등록되었습니다.\033[0m")
                     continue
 
-                # 등록 순으로 idx를 부여하기 위함
                 if idx in self.__file_data.keys():
                     last_idx = list(self.__file_data.keys())[-1]
                     self.__file_data[last_idx + 1] = file_path
-
-                # 최초 등록 시
                 else:
                     self.__file_data[idx] = file_path
-            # 썸네일 추출
-            self.__extract_thumbnails()
 
-            # 썸네일 디렉토리의 파일 검색 후 모델 새로고침
-            self.__thumb_lst = list(
-                map(
-                    lambda x: x.as_posix(),
-                    sys_lib.System.get_files_lst(pathlib.Path(self.thumb_dir), ".jpg"),
+                file_dropped = True
+            if file_dropped:
+                # 로딩 바 발생
+                self.__loading_dialog = LoadingDialog(len(urls))
+                self.__loading_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+                self.__loading_dialog.canceled.connect(self.__thumb_thread.cancel)
+                self.__loading_dialog.show()
+                self.__thumb_thread.thumbnail_extract.connect(
+                    self.__loading_dialog.increase_value
                 )
-            )
-            self.__file_lst = list(self.__file_data.values())
-            self.__itemview_model = NP_model.NP_ItemModel(
-                self.__thumb_lst, self.__file_lst
-            )
-            self.__item_listview.setModel(self.__itemview_model)
+                self.__thumb_thread.finished.connect(self.__extract_finished)
+                self.__thumb_thread.start()
 
-            # 아이템 선택 시 시그널 발생
-            self.__item_listview.selectionModel().selectionChanged.connect(
-                self.__slot_selection_item
-            )
-
-            self.__lineEdit_debug.setText("파일을 선택하세요")
             event.acceptProposedAction()
         else:
             event.ignore()
 
-    def __is_file_video(self, file_path: str) -> bool:
+    def __extract_finished(self):
         """
-        :param file_path: 파일 경로
-        :return: 해당 파일이 비디오 형식이면 True, 그렇지 않으면 False를 반환
+        스레드 작업 완료 후 호출되는 메서드
+        썸네일 추출이 완료되면 모델을 업데이트하여 UI를 새로고침
         """
-        mime_type, _ = mimetypes.guess_type(file_path)
-        if mime_type is not None and mime_type.startswith("video"):
-            return True
-        else:
-            return False
-
-    def __extract_thumbnails(self) -> None:
-        """
-        ffmpeg 모듈을 활용하여 영상에서 썸네일 추출.
-        임시 썸네일 폴더에 '.jpg'확장자로 썸네일 저장
-        """
-        for idx, f_path in self.__file_data.items():
-            base_name = os.path.splitext(os.path.basename(f_path))[0]
-            file_name = self.thumb_dir + "/" + base_name + ".jpg"
-            if os.path.exists(file_name):
-                continue
-            # self.__NP_util.NP_Utils.extract_thumbnail(f_path, file_name, '1920x1080')
-            self.__NP_util.NP_Utils.extract_thumbnail_subprocess(
-                f_path, file_name, "1280x720"
+        # 썸네일 디렉토리의 파일 검색 후 모델 새로고침
+        self.__thumb_lst = list(
+            map(
+                lambda x: x.as_posix(),
+                sys_lib.System.get_files_lst(pathlib.Path(self.__thumb_dir), ".jpg"),
             )
+        )
+        self.__file_lst = list(self.__file_data.values())
+        self.__itemview_model = NP_model.NP_ItemModel(self.__thumb_lst, self.__file_lst)
+        self.__item_listview.setModel(self.__itemview_model)
+
+        # 아이템 선택 시 시그널 발생
+        self.__item_listview.selectionModel().selectionChanged.connect(
+            self.__slot_selection_item
+        )
+
+        # 로딩 바 종료
+        self.__loading_dialog.hide()
+        self.__lineEdit_debug.setText("파일을 선택하세요")
 
     def __slot_del_file(self):
         """
@@ -512,7 +563,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
             # 썸네일 삭제
             thumbs = os.path.splitext(os.path.basename(f_path))[0] + ".jpg"
-            thumbs_path = os.path.join(self.thumb_dir, thumbs)
+            thumbs_path = os.path.join(self.__thumb_dir, thumbs)
             if os.path.exists(thumbs_path):
                 # 썸네일 제거
                 os.remove(thumbs_path)
@@ -652,11 +703,11 @@ class Nuke_Player(QtWidgets.QMainWindow):
         box = self.__NP_util.CustomMessageBox("")
         box.setWindowTitle("Keyboard Shortcut")
         box.setText(
-            "               <Main UI>\n"
+            "                <Main UI>\n"
             "[F1 ~ F3]            아이콘 크기 조절\n"
             "[Delete]              등록된 영상 삭제\n"
             "[V]                      체크박스 선택/해제\n"
-            "[I]                       GCC툴에 영상 삽입\n"
+            "[I]                       노드 삽입\n"
             "[Enter, P]            영상 재생\n"
             "\n"
             "           <Single Viewer>\n"
@@ -667,7 +718,14 @@ class Nuke_Player(QtWidgets.QMainWindow):
             "[R]                      반복 재생\n"
             "[V]                      표시 형식 변경\n"
             "[F11]                  전체 화면\n"
-            "[Esc]                   창 닫기"
+            "[Esc]                   창 닫기\n"
+            "\n"
+            "          <Multiple Viewer>\n"
+            "[L, Right]            재생\n"
+            "[K, Down]           일시정지\n"
+            "[J, Left]               정지\n"
+            "[M]                     표시 형식 변경\n"
+            "[P]                      반복 재생"
         )
         box.exec_()
 
@@ -859,6 +917,14 @@ class Nuke_Player(QtWidgets.QMainWindow):
             self.__adjust_size_2.setEnabled(True)
             self.__adjust_size_3.setEnabled(False)
 
+    @property
+    def file_data(self):
+        return self.__file_data
+
+    @property
+    def thumb_dir(self):
+        return self.__thumb_dir
+
     @staticmethod
     def delete_key_from_value(dictionary: dict, value):
         """
@@ -877,6 +943,18 @@ class Nuke_Player(QtWidgets.QMainWindow):
         for idx, val in enumerate(list(dictionary.values())):
             new_dict[idx] = val
         return new_dict
+
+    @staticmethod
+    def __is_file_video(file_path: str) -> bool:
+        """
+        :param file_path: 파일 경로
+        :return: 해당 파일이 비디오 형식이면 True, 그렇지 않으면 False를 반환
+        """
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if mime_type is not None and mime_type.startswith("video"):
+            return True
+        else:
+            return False
 
 
 if __name__ == "__main__":

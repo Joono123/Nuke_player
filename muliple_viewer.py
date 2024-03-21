@@ -1,7 +1,6 @@
 import sys
 import single_viewer
 from PySide2 import QtWidgets, QtGui, QtCore, QtMultimedia
-from library.qt import library as qt_lib
 
 
 class MultipleViewer(QtWidgets.QWidget):
@@ -16,15 +15,12 @@ class MultipleViewer(QtWidgets.QWidget):
 
         # vars
         self.__play_lst = play_lst
-        # self.__meunbar = self.menuBar()
-        # self.__statusbar = self.statusBar()
         self.__widget_data = dict()
 
         # btns
         self.__setup_widgets()
         self.__setup_ui()
         self.__connections()
-        # self.__widget_connections()
 
     def closeEvent(self, event):
         for w in self.__widget_data.values():
@@ -35,10 +31,17 @@ class MultipleViewer(QtWidgets.QWidget):
             print(f"\033[31m스레드 정상 종료: {w.wid}\033[0m")
         event.accept()
 
-    # def __widget_connections(self):
-    #     for widget in self.__widget_data.values():
-    #         widget: single_viewer.VideoWidget
-    #         widget.btn_fullscreen.clicked.connect(self.__slot_toggle_fullscreen)
+    def keyPressEvent(self, event):
+        if event.key() in [QtCore.Qt.Key_Right, QtCore.Qt.Key_L]:
+            self.__btn_play.click()
+        elif event.key() in [QtCore.Qt.Key_Down, QtCore.Qt.Key_K]:
+            self.__btn_pause.click()
+        elif event.key() in [QtCore.Qt.Key_Left, QtCore.Qt.Key_J]:
+            self.__btn_stop.click()
+        elif event.key() == QtCore.Qt.Key_M:
+            self.__btn_mode.click()
+        elif event.key() == QtCore.Qt.Key_P:
+            self.__btn_loop.click()
 
     def __connections(self):
         self.__btn_play.clicked.connect(self.__slot_play_all)
@@ -83,12 +86,16 @@ class MultipleViewer(QtWidgets.QWidget):
         self.__btn_stop.setToolTip("Stop All Videos")
         self.__btn_mode.setToolTip("Change Display Format")
         self.__btn_loop.setToolTip("Set Loop")
+        self.__btn_play.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.__btn_pause.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.__btn_stop.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.__btn_mode.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.__btn_loop.setFocusPolicy(QtCore.Qt.NoFocus)
 
         self.__btn_loop.setCheckable(True)
         self.__btn_loop.setChecked(False)
 
         # spacer
-
         __h_spacer = QtWidgets.QSpacerItem(
             260, 30, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
         )
@@ -109,7 +116,6 @@ class MultipleViewer(QtWidgets.QWidget):
         self.__vbox_layout.addWidget(__h_line)
         self.__vbox_layout.addLayout(btn_hbox)
 
-        # central_widget.setLayout(self.__vbox_layout)
         self.setLayout(self.__vbox_layout)
 
     def __setup_widgets(self):
@@ -167,9 +173,6 @@ class MultipleViewer(QtWidgets.QWidget):
         cols = self.__grid_layout.columnCount()
         for col in range(cols):
             self.__grid_layout.setColumnStretch(col, 1)
-
-    def resizeEvent(self, event):
-        print(self.size())
 
     def __slot_set_loop(self):
         if self.__btn_loop.isChecked():
