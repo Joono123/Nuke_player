@@ -2,17 +2,15 @@
 # encoding=utf-8
 # author        : Juno Park
 # created date  : 2024.02.26
-# modified date : 2024.03.22
+# modified date : 2024.03.21
 # description   : 누크에서 작업을 시작하기 전, 다양한 소스를 동시에 확인하는 것에 어려움이 있는데,
 #                 이러한 불편함을 해소하고자, 유저 친화적인 플레이어를 제작.
 #                 드래그앤드랍으로 간편하게 소스를 등록하고, 영상을 재생하며,
 #                 소스를 확인하는 동시에 DCC툴의 노드로 불러오는 것이 가능함.
 
-# 현재 확인된 특이사항 :
-
+import sys
 import importlib
 import os
-import sys
 
 os.environ["NUKE_INTERACTIVE"] = "1"
 import nuke
@@ -21,7 +19,7 @@ import pathlib
 import mimetypes
 import platform
 
-sys.path.append("/home/rapa/workspace/python/Nuke_player")
+sys.path.append("/")
 from library.player import muliple_viewer
 
 from library.player import single_viewer
@@ -44,42 +42,47 @@ importlib.reload(single_viewer)
 
 class FileProcessingThread(QtCore.QThread):
     thumbnail_extract = QtCore.Signal()
-    thread_stopped = QtCore.Signal()
-    thread_finished = QtCore.Signal()
+    finished = QtCore.Signal()
 
     def __init__(self, file_data: dict, thumbnail_dir: str):
         super().__init__()
         self.__file_data = file_data
         self.__thumb_dir = thumbnail_dir
         self.__NP_util = NP_Utils
-        self.__canceled = False
+        self.__cancled = False
 
     def run(self):
         total_files = len(self.__file_data)
         completed = 0
         for idx, f_path in self.__file_data.items():
-            if self.__canceled:
-                print(f"\033[31m파일 로드 중단\033[0m")
+            if self.__cancled:
+                print("hi")
                 break
             base_name = os.path.splitext(os.path.basename(f_path))[0]
             file_name = os.path.join(self.__thumb_dir, base_name + ".jpg")
             if os.path.exists(file_name):
+                print(f"{file_name} 이미 존재합니다")
                 completed += 1
                 continue
-            self.__NP_util.NP_Utils.extract_thumbnail(f_path, file_name, "1280x720")
-            self.thumbnail_extract.emit()
-            completed += 1
-            if total_files == completed:
-                break
-        self.thread_finished.emit()
+            try:
+                self.__NP_util.NP_Utils.extract_thumbnail(f_path, file_name, "1280x720")
+                print(f"{file_name}추출 완료")
+                self.thumbnail_extract.emit()
+                completed += 1
+                if total_files == completed:
+                    break
+            except Exception as err:
+                print(f"\033[31m썸네일 추출 중 에러 발생: {file_name} / {err}")
+        self.finished.emit()
 
     def stop(self):
-        self.thread_stopped.emit()
         self.quit()
         self.wait(10000)
+        print("\n\033[31m백그라운드 스레드 정상 종료\033[0m")
 
     def cancel(self):
-        self.__canceled = True
+        self.__cancled = True
+        print("\n\033[31m파일 로드 취소됨\033[0m")
 
 
 class LoadingDialog(QtWidgets.QProgressDialog):
@@ -87,11 +90,10 @@ class LoadingDialog(QtWidgets.QProgressDialog):
         super().__init__(parent)
         self.setWindowTitle("Loading")
         self.setLabelText("파일을 로드 중입니다.")
-        self.setFixedSize(300, 80)
-        # self.setCancelButton(None)
+        self.setFixedSize(300, 100)
         self.setRange(0, total_files)
         self.setValue(0)
-        self.setFont(QtGui.QFont("Sans Serif", 10))
+        self.setFont(QtGui.QFont("Sans Serif", 9))
         self.setStyleSheet(
             "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
         )
@@ -101,6 +103,7 @@ class LoadingDialog(QtWidgets.QProgressDialog):
         self.setValue(self.value() + 1)
 
     def reject(self):
+        # 취소 버튼을 눌렀을 때 시그널 발생
         self.canceled.emit()
         super().reject()
 
@@ -139,6 +142,8 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__set_menu()
         self.__connection()
 
+        # 스레드 생성 및 실행
+        self.__thumb_thread = FileProcessingThread(self.__file_data, self.__thumb_dir)
         self.__item_listview.setIconSize(QtCore.QSize(229, 109))
 
     def __cleanup(self) -> None:
@@ -185,15 +190,9 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__adjust_size_3 = QtWidgets.QPushButton("", self)
         self.__btn_idx_up = QtWidgets.QPushButton()
         self.__btn_idx_down = QtWidgets.QPushButton()
-        self.__adjust_size_1.setIcon(
-            QtGui.QIcon("/home/rapa/workspace/python/Nuke_player/resource/png/1x1.png")
-        )
-        self.__adjust_size_2.setIcon(
-            QtGui.QIcon("/home/rapa/workspace/python/Nuke_player/resource/png/2x2.png")
-        )
-        self.__adjust_size_3.setIcon(
-            QtGui.QIcon("/home/rapa/workspace/python/Nuke_player/resource/png/3x3.png")
-        )
+        self.__adjust_size_1.setIcon(QtGui.QIcon("/resource/png/1x1.png"))
+        self.__adjust_size_2.setIcon(QtGui.QIcon("/resource/png/2x2.png"))
+        self.__adjust_size_3.setIcon(QtGui.QIcon("/resource/png/3x3.png"))
         self.__btn_idx_up.setIcon(
             QtGui.QIcon(self.style().standardIcon(QtWidgets.QStyle.SP_ArrowUp))
         )
@@ -508,26 +507,22 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 else:
                     self.__file_data[idx] = file_path
 
-            # 스레드 생성 및 실행
-            self.__thumb_thread = FileProcessingThread(self.__file_data, self.thumb_dir)
-            self.__thumb_thread.thumbnail_extract.connect(self.__extract_finished)
-            self.__thumb_thread.finished.connect(self.__thread_stopped)
-            self.__thumb_thread.start()
-            # 로딩 바 발생
-            self.__loading_dialog = LoadingDialog(len(urls))
-            self.__loading_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
-            self.__loading_dialog.canceled.connect(self.__thumb_thread.cancel)
-            self.__thumb_thread.thumbnail_extract.connect(
-                self.__loading_dialog.increase_value
-            )
-            self.__loading_dialog.show()
+                file_dropped = True
+            if file_dropped:
+                # 로딩 바 발생
+                self.__loading_dialog = LoadingDialog(len(urls))
+                self.__loading_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+                self.__loading_dialog.canceled.connect(self.__thumb_thread.cancel)
+                self.__loading_dialog.show()
+                self.__thumb_thread.thumbnail_extract.connect(
+                    self.__loading_dialog.increase_value
+                )
+                self.__thumb_thread.finished.connect(self.__extract_finished)
+                self.__thumb_thread.start()
 
             event.acceptProposedAction()
         else:
             event.ignore()
-
-    def __thread_stopped(self):
-        self.__loading_dialog.hide()
 
     def __extract_finished(self):
         """
@@ -544,15 +539,21 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__file_lst = list(self.__file_data.values())
         self.__itemview_model = NP_model.NP_ItemModel(self.__thumb_lst, self.__file_lst)
         self.__item_listview.setModel(self.__itemview_model)
+        print(
+            f"플레이리스트: {self.__play_lst}\n"
+            f"파일 리스트: {self.__file_lst}\n"
+            f"썸네일 리스트: {self.__thumb_lst}\n"
+        )
 
         # 아이템 선택 시 시그널 발생
         self.__item_listview.selectionModel().selectionChanged.connect(
             self.__slot_selection_item
         )
-        # self.__thumb_thread.stop()
-        # self.__thumb_thread.wait()
+        self.__thumb_thread.stop()
+        self.__thumb_thread.wait()
 
         # 로딩 바 종료
+        self.__loading_dialog.hide()
         self.__lineEdit_debug.setText("파일을 선택하세요")
 
     def __is_file_video(self, file_path: str) -> bool:

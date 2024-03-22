@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 # encoding=utf-8
-# author        : Juno Park
-# created date  : 2024.02.26
-# modified date : 2024.03.22
-# description   : 누크에서 작업을 시작하기 전, 다양한 소스를 동시에 확인하는 것에 어려움이 있는데,
-#                 이러한 불편함을 해소하고자, 유저 친화적인 플레이어를 제작.
-#                 드래그앤드랍으로 간편하게 소스를 등록하고, 영상을 재생하며,
-#                 소스를 확인하는 동시에 DCC툴의 노드로 불러오는 것이 가능함.
+# author        :   Juno Park
+# created date  :   2024.02.26
+# modified date :   2024.03.22
+# description   :   누크에서 작업을 시작하기 전, 다양한 소스를 동시에 확인하는 것에 어려움이 있는데,
+#                   이러한 불편함을 해소하고자, 유저 친화적인 플레이어를 제작.
+#                   드래그앤드랍으로 간편하게 소스를 등록하고, 영상을 재생하며,
+#                   소스를 확인하는 동시에 DCC툴의 노드로 불러오는 것이 가능함.
 
-# 현재 확인된 특이사항 :
+# 현재 확인된 위험  :  파일을 드롭하고 썸네일을 추출하는 도중 취소하게 되면 썸네일 추출은 중단되지만,
+#                   파일 정보는 리스트 및 딕셔너리에 들어가게 됨.
+
 
 import importlib
 import os
@@ -44,7 +46,6 @@ importlib.reload(single_viewer)
 
 class FileProcessingThread(QtCore.QThread):
     thumbnail_extract = QtCore.Signal()
-    thread_stopped = QtCore.Signal()
     thread_finished = QtCore.Signal()
 
     def __init__(self, file_data: dict, thumbnail_dir: str):
@@ -55,39 +56,38 @@ class FileProcessingThread(QtCore.QThread):
         self.__canceled = False
 
     def run(self):
-        total_files = len(self.__file_data)
-        completed = 0
         for idx, f_path in self.__file_data.items():
             if self.__canceled:
-                print(f"\033[31m파일 로드 중단\033[0m")
                 break
             base_name = os.path.splitext(os.path.basename(f_path))[0]
             file_name = os.path.join(self.__thumb_dir, base_name + ".jpg")
+            # 썸네일이 이미 존재하는 경우 넘어감
             if os.path.exists(file_name):
-                completed += 1
                 continue
-            self.__NP_util.NP_Utils.extract_thumbnail(f_path, file_name, "1280x720")
-            self.thumbnail_extract.emit()
-            completed += 1
-            if total_files == completed:
-                break
+            # 썸네일 추출
+            try:
+                self.__NP_util.NP_Utils.extract_thumbnail(f_path, file_name, "1280x720")
+                self.thumbnail_extract.emit()
+            except Exception as err:
+                print(f"\033[31mERROR:{file_name} >> {err}\033[0m")
         self.thread_finished.emit()
 
     def stop(self):
-        self.thread_stopped.emit()
         self.quit()
         self.wait(10000)
+        print("\n\033[31m백그라운드 스레드 정상 종료\033[0m")
 
     def cancel(self):
         self.__canceled = True
+        print(f"\033[31m파일 로드 중단\033[0m")
 
 
 class LoadingDialog(QtWidgets.QProgressDialog):
     def __init__(self, total_files, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Loading")
+        self.setWindowTitle("File Loading")
         self.setLabelText("파일을 로드 중입니다.")
-        self.setFixedSize(300, 80)
+        self.setFixedSize(300, 100)
         # self.setCancelButton(None)
         self.setRange(0, total_files)
         self.setValue(0)
@@ -499,7 +499,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
                     return
 
                 if file_path in self.__file_data.values():
-                    print(f"\033[31mERROR: '{file_path}'가 이미 등록되었습니다.\033[0m")
+                    # print(f"\033[31mERROR: '{file_path}'가 이미 등록되었습니다.\033[0m")
                     continue
 
                 if idx in self.__file_data.keys():
