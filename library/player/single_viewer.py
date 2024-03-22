@@ -14,6 +14,7 @@ sys.path.append("/home/rapa/libs_nuke")
 import time
 from PySide2 import QtWidgets, QtCore, QtGui, QtMultimediaWidgets, QtMultimedia
 
+sys.path.append("/home/rapa/workspace/python/Nuke_player")
 from library.qt import library as qt_lib
 from library.NP_Utils import NP_Utils
 
@@ -469,11 +470,22 @@ class VideoWidget(QtWidgets.QWidget):
             self.__label_current_time.setText(f"{current_time_str} / {total_time_str}")
 
 
-t_path = ["/home/rapa/Downloads/test1.MOV"]
-t_path_str = "/home/rapa/Downloads/test1.MOV"
+# t_path = ["/home/rapa/Downloads/test1.MOV"]
+# t_path_str = "/home/rapa/Downloads/test1.MOV"
+#
+# if __name__ == "__main__":
+#     app = QtWidgets.QApplication(sys.argv)
+#     vid = VideoWidget(t_path)
+#     vid.show()
+#     sys.exit(app.exec_())
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    vid = VideoWidget(t_path)
+    if len(sys.argv) > 1:
+        playlist = sys.argv[1:]
+    else:
+        print("사용법: python single_viewer.py <비디오 파일 경로1> <비디오 파일 경로2> ...")
+        sys.exit(1)
+    vid = VideoWidget(playlist)
     vid.show()
     sys.exit(app.exec_())
