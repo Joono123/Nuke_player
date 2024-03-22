@@ -1,6 +1,6 @@
 import sys
-import single_viewer
-from PySide2 import QtWidgets, QtGui, QtCore, QtMultimedia
+from library.player import multiple_viewer_parent
+from PySide2 import QtWidgets, QtGui, QtCore
 
 
 class MultipleViewer(QtWidgets.QWidget):
@@ -24,7 +24,7 @@ class MultipleViewer(QtWidgets.QWidget):
 
     def closeEvent(self, event):
         for w in self.__widget_data.values():
-            w: single_viewer.VideoWidget
+            w: multiple_viewer_parent.VideoWidget
             if w.update_thread.isRunning():
                 w.slot_stop_video()
                 w.update_thread.stop()
@@ -120,7 +120,7 @@ class MultipleViewer(QtWidgets.QWidget):
 
     def __setup_widgets(self):
         for idx, v_path in enumerate(self.__play_lst):
-            self.widget = single_viewer.VideoWidget(v_path)
+            self.widget = multiple_viewer_parent.VideoWidget(v_path)
             self.widget.setSizePolicy(
                 QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
             )
@@ -177,11 +177,11 @@ class MultipleViewer(QtWidgets.QWidget):
     def __slot_set_loop(self):
         if self.__btn_loop.isChecked():
             for w in self.__widget_data.values():
-                w: single_viewer.VideoWidget
+                w: multiple_viewer_parent.VideoWidget
                 w.btn_loop.setChecked(True)
         else:
             for w in self.__widget_data.values():
-                w: single_viewer.VideoWidget
+                w: multiple_viewer_parent.VideoWidget
                 w.btn_loop.setChecked(False)
 
     def __slot_change_dp(self):
@@ -190,7 +190,7 @@ class MultipleViewer(QtWidgets.QWidget):
         elif self.__btn_mode.text() == "tc":
             self.__btn_mode.setText("fps")
         for w in self.__widget_data.values():
-            w: single_viewer.VideoWidget
+            w: multiple_viewer_parent.VideoWidget
             if self.__btn_mode.text() == "tc":
                 w.btn_mode.setText("tc")
             elif self.__btn_mode.text() == "fps":
@@ -198,21 +198,21 @@ class MultipleViewer(QtWidgets.QWidget):
 
     def __slot_play_all(self):
         for w in self.__widget_data.values():
-            w: single_viewer.VideoWidget
+            w: multiple_viewer_parent.VideoWidget
             w.player.play()
             # self.__btn_play.setEnabled(False)
             # self.__btn_pause.setEnabled(True)
 
     def __slot_pause_all(self):
         for w in self.__widget_data.values():
-            w: single_viewer.VideoWidget
+            w: multiple_viewer_parent.VideoWidget
             w.player.pause()
             # self.__btn_play.setEnabled(True)
             # self.__btn_pause.setEnabled(False)
 
     def __slot_stop_all(self):
         for w in self.__widget_data.values():
-            w: single_viewer.VideoWidget
+            w: multiple_viewer_parent.VideoWidget
             w.player.stop()
             # self.__btn_play.setEnabled(True)
             # self.__btn_pause.setEnabled(False)

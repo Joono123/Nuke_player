@@ -1,7 +1,5 @@
 import sys
-import single_viewer
-from PySide2 import QtWidgets, QtGui, QtCore, QtMultimedia
-from library.qt import library as qt_lib
+from PySide2 import QtWidgets, QtGui
 
 
 class MultipleViewer(QtWidgets.QWidget):

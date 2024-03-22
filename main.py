@@ -20,8 +20,8 @@ import mimetypes
 import platform
 
 sys.path.append("/home/rapa/workspace/python/Nuke_player")
-import muliple_viewer
-
+from library.player import muliple_viewer
+from library.player import single_viewer
 from PySide2 import QtWidgets, QtGui, QtCore
 
 from view import NP_view
@@ -36,6 +36,7 @@ importlib.reload(NP_Utils)
 importlib.reload(qt_lib)
 importlib.reload(sys_lib)
 importlib.reload(muliple_viewer)
+importlib.reload(single_viewer)
 
 
 class FileProcessingThread(QtCore.QThread):
@@ -105,6 +106,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         super().__init__()
         # 변수 설정
         self.__NP_util = NP_Utils
+        self.__single_viewer = single_viewer
         self.__item_listview = NP_view.NP_ItemView()
         self.__text_listview = NP_view.NP_ListView()
 
@@ -841,11 +843,11 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
         # 선택된 영상의 수 및 체크박스 선택 여부에 따라 플레이어 설정
         if self.__check_viewer.isChecked() and len(self.__play_lst) == 1:
-            self.__sing_vw = self.__NP_util.VideoWidget(self.__play_lst)
+            self.__sing_vw = self.__single_viewer.VideoWidget(self.__play_lst)
             self.__sing_vw.show()
 
         elif not self.__check_viewer.isChecked():
-            self.__sing_vw = self.__NP_util.VideoWidget(self.__play_lst)
+            self.__sing_vw = self.__single_viewer.VideoWidget(self.__play_lst)
             self.__sing_vw.show()
 
         # 멀티 뷰어로 재생
