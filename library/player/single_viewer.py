@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # encoding=utf-8
-# author        : Juno Park
-# created date  : 2024.02.26
-# modified date : 2024.02.26
-# description   : subprocess 및 ffmpeg을 활용한 썸네일 제작 VLC로 영상 재생
 
-# ffmpeg 모듈 설치: https://computingforgeeks.com/how-to-install-ffmpeg-on-centos-rhel-8/#google_vignette
-# ffmpeg-python : pip install ffmpeg-python
+# author        :   Juno Park
+# created date  :   2024.03.03
+# modified date :   2024.03.23
+# description   :   Nuke_player에 삽입되는 Single_viewer 클래스
 
+
+import os.path
 import sys
 
 sys.path.append("/home/rapa/libs_nuke")
@@ -20,6 +20,7 @@ from library.NP_Utils import NP_Utils
 
 
 class Thread_Updater(QtCore.QThread):
+    # 슬라이더 업데이트를 위한 스레드
     pos_updated = QtCore.Signal(int)
     dur_updated = QtCore.Signal(int)
 
@@ -77,7 +78,10 @@ class VideoWidget(QtWidgets.QWidget):
         self.__slider_updater.dur_updated.connect(self.__slot_label_info)
         self.__slider_updater.start()
 
-    def __init_ui(self):
+    def __init_ui(self) -> None:
+        """
+        UI 생성 및 메인 위젯 설정
+        """
         self.setStyleSheet(
             "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
         )
@@ -213,8 +217,11 @@ class VideoWidget(QtWidgets.QWidget):
 
         self.__update_file_path_label()
 
-    def __connections(self):
-        # self.__btn_open.clicked.connect(self.__slot_open_file)
+    def __connections(self) -> None:
+        """
+        UI 상호작용에 따른 시그널을 슬롯에 연결
+        """
+        # btns
         self.__btn_play.clicked.connect(self.__slot_play_video)
         self.__btn_stop.clicked.connect(self.__slot_stop_video)
         self.__btn_next.clicked.connect(self.__slot_next_video)
@@ -222,27 +229,29 @@ class VideoWidget(QtWidgets.QWidget):
         self.__btn_mode.clicked.connect(self.__slot_dp_mode)
         self.__btn_fullscreen.clicked.connect(self.__slot_fullscreen)
 
+        # player
         self.__player.stateChanged.connect(self.__slot_state_changed)
-        self.__player.positionChanged.connect(self.__slot_pos_shanged)
+        self.__player.positionChanged.connect(self.__slot_pos_changed)
         self.__player.durationChanged.connect(self.__slot_duration_changed)
 
+        # slider
         self.__slider.sliderMoved.connect(self.__slot_slider_moved)
-        # self.__slider.sliderPressed.connect(self.__slot_slider_pressed)
 
+        # playlist
         self.__play_lst.currentIndexChanged.connect(self.__update_file_path_label)
 
-    def keyPressEvent(self, event: QtGui.QKeyEvent):
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        """
+        :param event: 키보드 입력 이벤트
+        :return: 키보드 입력에 따른 이벤트 처리
+        """
         if event.key() in [QtCore.Qt.Key_Space, QtCore.Qt.Key_Up, QtCore.Qt.Key_K]:
-            # self.__btn_play.click()
             self.__slot_play_video()
         elif event.key() in [QtCore.Qt.Key_Right, QtCore.Qt.Key_L]:
-            # self.__btn_next.click()
             self.__slot_next_video()
         elif event.key() in [QtCore.Qt.Key_Left, QtCore.Qt.Key_J]:
-            # self.__btn_prev.click()
             self.__slot_prev_video()
         elif event.key() in [QtCore.Qt.Key_Down, QtCore.Qt.Key_Q]:
-            # self.__btn_stop.click()
             self.__slot_stop_video()
         elif event.key() == QtCore.Qt.Key_R:
             self.__btn_loop.click()
@@ -255,35 +264,51 @@ class VideoWidget(QtWidgets.QWidget):
         else:
             event.ignore()
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event) -> None:
+        """
+        드래그 중인 정보가 Url인지 검증
+        """
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
         else:
             event.ignore()
 
-    def dropEvent(self, event):
+    def dropEvent(self, event) -> None:
+        """
+        드롭된 정보가 Url인지 검증
+        """
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
         else:
             event.ignore()
 
-    def dragMoveEvent(self, event):
+    def dragMoveEvent(self, event) -> None:
+        """
+        드래그 중인 정보가 Url인지 검증
+        """
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
-            self.__overlay_frame.show()
+            # self.__overlay_frame.show()
         else:
             event.ignore()
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event) -> None:
+        """
+        :param event: 마우스가 눌리면 발생하는 이벤트
+        마우스의 왼쪽 버튼이 눌린 경우 드래그에 Url정보를 설정
+        """
         if event.button() == QtCore.Qt.LeftButton:
             drag = QtGui.QDrag(self)
             mime_data = QtCore.QMimeData()
             mime_data.setUrls([QtCore.QUrl(self.path_lst[self.__dp_idx - 1])])
             drag.setMimeData(mime_data)
             drag.exec_(QtCore.Qt.CopyAction)
-            self.__overlay_frame.show()
+            # self.__overlay_frame.show()
 
     def closeEvent(self, event):
+        """
+        UI 종료 시 플레이어를 정지하고 슬라이더 업데이트 스레드를 종료
+        """
         if self.__player.state() in [
             QtMultimedia.QMediaPlayer.PlayingState,
             QtMultimedia.QMediaPlayer.PausedState,
@@ -294,122 +319,141 @@ class VideoWidget(QtWidgets.QWidget):
             self.__slider_updater.wait()
         event.accept()
 
-    def resizeEvent(self, event):
-        pass
-
-    def __get_current_video_fps(self):
+    def __get_current_video_fps(self) -> float:
+        """
+        :return: 현재 재생 중인 영상의 프레임 정보를 소수점 아래 3자리까지 반환
+        """
         current_media = self.__player.currentMedia()
+        # 재생 중인 미디어가 있는지 확인
         if current_media.isNull():
             print("\033[31mERROR: 현재 미디어가 없음\033[0m")
+            return 0
         else:
             current_url = current_media.canonicalUrl().toLocalFile()
-            # print(current_url)
             fps = round(self.__NP_Util.get_video_fps(current_url), 3)
-            # print(f"fps: {fps}")
             return fps
 
-    def __add_play_lst(self, playlist: list[str]):
+    def __add_play_lst(self, playlist: list[str]) -> None:
+        """
+        :param playlist: 비디오 파일 경로가 담긴 리스트
+        리스트로 받은 파일 경로가 로컬에 존재하는 파일인지 확인하여 플레이리스트에 추가
+        """
         for f_path in playlist:
+            # 파일이 존재하는지 검증
+            if not os.path.exists(f_path):
+                print(f"\033[31mERROR: {f_path}가 존재하지 않음\033[0m")
+                return
             f_info = QtCore.QFileInfo(f_path)
-            if f_info.exists():
-                url = QtCore.QUrl.fromLocalFile(f_info.absoluteFilePath())
-                self.__play_lst.addMedia(QtMultimedia.QMediaContent(url))
+            # 파일 정보가 존재하는지 검증
+            if not f_info.exists():
+                print(f"\033[31mERROR: {f_info}가 존재하지 않음\033[0m")
+                return
+            # 파일 주소값을 절대 경로로 가져옴
+            url = QtCore.QUrl.fromLocalFile(f_info.absoluteFilePath())
+            self.__play_lst.addMedia(QtMultimedia.QMediaContent(url))
         print(f"\033[32m플레이 리스트: {playlist}\033[0m")
 
     @QtCore.Slot(int)
-    def __update_slider_position(self, position):
+    def __update_slider_position(self, position: int) -> None:
+        """
+        :param position: 플레이어의 현재 포지션
+        플레이어가 재생 중일 때 슬라이더의 값을 업데이트
+        """
         self.__slider.setValue(position)
 
-    def __update_file_path_label(self):
+    def __update_file_path_label(self) -> None:
+        """
+        현재 재생 중인 파일의 경로를 UI에 업데이트
+        """
         current_file = self.path_lst[self.__play_lst.currentIndex()]
         self.__label_filename.setText(f"Current File: {current_file}")
 
-    def __slot_fullscreen(self):
+    def __slot_fullscreen(self) -> None:
+        """
+        플레이어가 현재 전체화면이 아닌 경우 전체화면으로, 그렇지 않은 경우 원래대로 설정함
+        """
         if not self.isFullScreen():
             self.showFullScreen()
         else:
             self.showNormal()
 
-    def __slot_dp_mode(self):
+    def __slot_dp_mode(self) -> None:
+        """
+        표시 형식 버튼을 누르면 텍스트 변경
+        """
         if self.__btn_mode.text() == "fps":
             self.__btn_mode.setText("time")
-            # print("출력 형식: 시간")
         else:
             self.__btn_mode.setText("fps")
-            # current_media = self.__player.currentMedia()
-            # url = current_media.canonicalUrl().toLocalFile()
-            # fps = round(self.__NP_Util.get_video_fps(url), 3)
-            # print(f"출력 형식: {fps}프레임")
 
-    def __slot_open_file(self):
-        filename, etc = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video")
-
-        if filename != "":
-            self.__player.setMedia(
-                QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(filename))
-            )
-            self.__btn_play.setEnabled(True)
-            self.__btn_play.setStyleSheet("background-color: rgb(80,80,80);")
-            self.__btn_stop.setEnabled(True)
-            self.__btn_stop.setStyleSheet("background-color: rgb(80,80,80);")
-            print(f"Loaded: {filename}")
-
-    def __slot_next_video(self):
+    def __slot_next_video(self) -> None:
+        """
+        플레이리스트의 다음 영상을 재생
+        """
         current_idx = self.__play_lst.currentIndex()
-        if self.__play_lst.currentIndex() < len(self.path_lst) - 1:
-            self.__play_lst.setCurrentIndex(current_idx + 1)
-            self.current_fps = self.__get_current_video_fps()
-            self.__dp_idx += 1
-            self.__label_dp_idx.setText(f"{self.__dp_idx} / {len(self.path_lst)}")
-            # print("다음 영상을 재생합니다.")
-            # self.__player.play()
-            self.__player.setPosition(0)
-        else:
+        # 영상이 재생목록의 마지막인 경우 return
+        if not self.__play_lst.currentIndex() < len(self.path_lst) - 1:
             print("\033[31mERROR: 재생 목록의 마지막 영상입니다.\033[0m")
             return
+        self.__play_lst.setCurrentIndex(current_idx + 1)
+        self.current_fps = self.__get_current_video_fps()
+        self.__dp_idx += 1
+        self.__label_dp_idx.setText(f"{self.__dp_idx} / {len(self.path_lst)}")
+        self.__player.setPosition(0)
 
-    def __slot_prev_video(self):
+    def __slot_prev_video(self) -> None:
+        """
+        플레이리스트의 이전 영상을 재생
+        """
         current_idx = self.__play_lst.currentIndex()
         current_pos: int = self.__player.position()
         current_time: QtCore.QTime = QtCore.QTime(0, 0).addMSecs(current_pos)
-        if self.__play_lst.currentIndex() > 0:
+        # 현재 영상이 플레이 리스트의 첫 번째인 경우 에러 발생
+        if not self.__play_lst.currentIndex() > 0:
+            # 현재 재생 시점이 일정 시간이 지난 경우 현재 영상을 처음부터 재생
             if 0 < current_time.second():
                 self.__player.stop()
                 self.__player.play()
-                return
-                # print("영상의 맨 앞으로 이동합니다.")
-            else:
-                self.__play_lst.setCurrentIndex(current_idx - 1)
-                self.current_fps = self.__get_current_video_fps()
-                self.__dp_idx -= 1
-                self.__label_dp_idx.setText(f"{self.__dp_idx} / {len(self.path_lst)}")
-                # print("이전 영상을 재생합니다.")
-                # self.__player.play()
-        else:
-            if 0 < current_time.second():
-                self.__player.stop()
-                self.__player.play()
-                # print("영상의 맨 앞으로 이동합니다.")
             else:
                 print("\033[31mERROR: 재생 목록의 첫 번째 영상입니다.\033[0m")
                 self.__player.setPosition(0)
                 self.__player.pause()
                 self.__slider.setValue(0)
+        else:
+            # 현재 재생 시점이 일정 시간이 지난 경우 현재 영상을 처음부터 재생
+            if 0 < current_time.second():
+                self.__player.stop()
+                self.__player.play()
+                return
+            else:
+                # 플레이리스트의 이전 영상을 재생하고 UI 업데이트
+                self.__play_lst.setCurrentIndex(current_idx - 1)
+                self.current_fps = self.__get_current_video_fps()
+                self.__dp_idx -= 1
+                self.__label_dp_idx.setText(f"{self.__dp_idx} / {len(self.path_lst)}")
 
-    def __slot_stop_video(self):
+    def __slot_stop_video(self) -> None:
+        """
+        stop 버튼이 클릭된 경우 player의 포지션을 0으로 만들고 정지
+        """
         self.__player.setPosition(0)
         self.__player.stop()
-        # print("정지")
 
-    def __slot_play_video(self):
+    def __slot_play_video(self) -> None:
+        """
+        play버튼을 클릭한 경우 player가 재생 중이면 일시정지, 그렇지 않으면 재생
+        """
         if self.__player.state() == QtMultimedia.QMediaPlayer.PlayingState:
             self.__player.pause()
-            # print("일시정지")
         else:
             self.__player.play()
-            # print("재생")
 
-    def __slot_state_changed(self, ste):
+    def __slot_state_changed(self, ste) -> None:
+        """
+        :param ste: 현재 플레이어의 상태 (재생 or 일시정지 or 정지)
+        :return:
+        """
+        # 재생 중에는 play 아이콘을 pause아이콘으로 변경
         if ste == QtMultimedia.QMediaPlayer.PlayingState:
             self.__btn_play.setIcon(
                 self.style().standardIcon(QtWidgets.QStyle.SP_MediaPause)
@@ -419,6 +463,7 @@ class VideoWidget(QtWidgets.QWidget):
             self.__btn_play.setIcon(
                 self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay)
             )
+        # 영상이 정지되었을 때 loop 버튼이 체크 상태라면 영상을 처음부터 다시 재생
         if ste == QtMultimedia.QMediaPlayer.StoppedState:
             if self.__btn_loop.isChecked():
                 self.__player.setPosition(0)
@@ -427,21 +472,32 @@ class VideoWidget(QtWidgets.QWidget):
                     self.style().standardIcon(QtWidgets.QStyle.SP_MediaPause)
                 )
 
-    def __slot_pos_shanged(self, pos):
+    def __slot_pos_changed(self, pos) -> None:
+        """
+        :param pos: player의 position값
+        현재 영상의 재생 구간이 바뀔 경우 slider도 그에 맞게 업데이트
+        """
         self.__slider.setValue(pos)
 
-    def __slot_duration_changed(self, duration):
+    def __slot_duration_changed(self, duration) -> None:
+        """
+        :param duration: 영상의 길이
+        현재 재생 중인 영상이 바뀔 경우 slider의 범위를 재설정
+        """
         self.__slider.setRange(0, duration)
-        # self.__player.pause()
 
-    def __slot_slider_pressed(self):
-        pos = self.__slider.value()
+    def __slot_slider_moved(self, pos) -> None:
+        """
+        :param pos: slider가 이동한 위치의 position값
+        슬라이더를 조작하면 영상의 재생 구간을 업데이트
+        """
         self.__player.setPosition(pos)
 
-    def __slot_slider_moved(self, pos):
-        self.__player.setPosition(pos)
-
-    def __slot_label_info(self):
+    def __slot_label_info(self) -> None:
+        """
+        현재 영상의 총 시간, 남은 시간, 현재 시간을 표시 계산하여 label에 업데이트
+        표시 형식 변경시 시간 대신 fps를 표시
+        """
         # 플레이어의 포지션 값
         total_pos = self.__player.duration()
         current_pos = self.__player.position()
@@ -469,23 +525,33 @@ class VideoWidget(QtWidgets.QWidget):
             self.__label_remain_time.setText(remain_time_str)
             self.__label_current_time.setText(f"{current_time_str} / {total_time_str}")
 
+    # ###################################### LEGACY ##########################################
 
-# t_path = ["/home/rapa/Downloads/test1.MOV"]
-# t_path_str = "/home/rapa/Downloads/test1.MOV"
-#
-# if __name__ == "__main__":
-#     app = QtWidgets.QApplication(sys.argv)
-#     vid = VideoWidget(t_path)
-#     vid.show()
-#     sys.exit(app.exec_())
+    def __slot_open_file_legacy(self) -> None:
+        """
+        파일 탐색기를 열어 영상을 직접 선택 및 재생할 수 있음, 현재 사용하지 않음
+        """
+        filename, etc = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video")
+
+        if filename != "":
+            self.__player.setMedia(
+                QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(filename))
+            )
+            self.__btn_play.setEnabled(True)
+            self.__btn_play.setStyleSheet("background-color: rgb(80,80,80);")
+            self.__btn_stop.setEnabled(True)
+            self.__btn_stop.setStyleSheet("background-color: rgb(80,80,80);")
+            print(f"Loaded: {filename}")
+
+    # ########################################################################################
+
+
+# TEST
+t_path = ["/home/rapa/Downloads/test1.MOV"]
+t_path_str = "/home/rapa/Downloads/test1.MOV"
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    if len(sys.argv) > 1:
-        playlist = sys.argv[1:]
-    else:
-        print("사용법: python single_viewer.py <비디오 파일 경로1> <비디오 파일 경로2> ...")
-        sys.exit(1)
-    vid = VideoWidget(playlist)
+    vid = VideoWidget(t_path)
     vid.show()
     sys.exit(app.exec_())

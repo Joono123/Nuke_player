@@ -1,3 +1,12 @@
+#!/usr/bin/env python
+# encoding=utf-8
+
+# author        :   Juno Park
+# created date  :   2024.03.05
+# modified date :   2024.03.23
+# description   :   Nuke_player에 삽입되는 Multiple_viewer 클래스
+
+
 import sys
 from library.player import multiple_viewer_parent
 from PySide2 import QtWidgets, QtGui, QtCore
@@ -22,7 +31,10 @@ class MultipleViewer(QtWidgets.QWidget):
         self.__setup_ui()
         self.__connections()
 
-    def closeEvent(self, event):
+    def closeEvent(self, event) -> None:
+        """
+        멀티 뷰어 종료 시 각 싱글 뷰어의 스레드 종료 후 창 닫음
+        """
         for w in self.__widget_data.values():
             w: multiple_viewer_parent.VideoWidget
             if w.update_thread.isRunning():
@@ -31,7 +43,11 @@ class MultipleViewer(QtWidgets.QWidget):
             print(f"\033[31m스레드 정상 종료: {w.wid}\033[0m")
         event.accept()
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event) -> None:
+        """
+        :param event: 키보드 입력 시 발생하는 이벤트
+        키보드 입력에 따른 이벤트 처리
+        """
         if event.key() in [QtCore.Qt.Key_Right, QtCore.Qt.Key_L]:
             self.__btn_play.click()
         elif event.key() in [QtCore.Qt.Key_Down, QtCore.Qt.Key_K]:
@@ -43,17 +59,21 @@ class MultipleViewer(QtWidgets.QWidget):
         elif event.key() == QtCore.Qt.Key_P:
             self.__btn_loop.click()
 
-    def __connections(self):
+    def __connections(self) -> None:
+        """
+        UI 상호작용 시 발생하는 시그널을 슬롯에 연결
+        """
         self.__btn_play.clicked.connect(self.__slot_play_all)
         self.__btn_pause.clicked.connect(self.__slot_pause_all)
         self.__btn_stop.clicked.connect(self.__slot_stop_all)
         self.__btn_mode.clicked.connect(self.__slot_change_dp)
         self.__btn_loop.clicked.connect(self.__slot_set_loop)
 
-    def __setup_ui(self):
-        # self.setFixedSize(1440, 810)
+    def __setup_ui(self) -> None:
+        """
+        멀티 뷰어 UI 세팅 및 메인 위젯 설정
+        """
         self.setWindowTitle("Multiple Viewer")
-        # central_widget = QtWidgets.QWidget()
         self.setStyleSheet(
             "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
         )
@@ -167,6 +187,7 @@ class MultipleViewer(QtWidgets.QWidget):
                 self.__grid_layout.addWidget(self.__frame, int(idx // 4), int(idx % 4))
                 self.setFixedSize(1452, 970)
 
+        # 각 행과 열의 간격을 동일하게 설정
         rows = self.__grid_layout.rowCount()
         for row in range(rows):
             self.__grid_layout.setRowStretch(row, 1)
@@ -174,7 +195,10 @@ class MultipleViewer(QtWidgets.QWidget):
         for col in range(cols):
             self.__grid_layout.setColumnStretch(col, 1)
 
-    def __slot_set_loop(self):
+    def __slot_set_loop(self) -> None:
+        """
+        멀티 뷰어의 loop 버튼 클릭 시 모든 싱글 뷰어의 loop버튼 동작
+        """
         if self.__btn_loop.isChecked():
             for w in self.__widget_data.values():
                 w: multiple_viewer_parent.VideoWidget
@@ -184,11 +208,15 @@ class MultipleViewer(QtWidgets.QWidget):
                 w: multiple_viewer_parent.VideoWidget
                 w.btn_loop.setChecked(False)
 
-    def __slot_change_dp(self):
+    def __slot_change_dp(self) -> None:
+        """
+        멀티 뷰어의 표시 형식 버튼 클릭 시 모든 표시 형식 버튼 동작
+        """
         if self.__btn_mode.text() == "fps":
             self.__btn_mode.setText("tc")
         elif self.__btn_mode.text() == "tc":
             self.__btn_mode.setText("fps")
+
         for w in self.__widget_data.values():
             w: multiple_viewer_parent.VideoWidget
             if self.__btn_mode.text() == "tc":
@@ -196,32 +224,32 @@ class MultipleViewer(QtWidgets.QWidget):
             elif self.__btn_mode.text() == "fps":
                 w.btn_mode.setText("fps")
 
-    def __slot_play_all(self):
+    def __slot_play_all(self) -> None:
+        """
+        멀티 뷰어의 play 버튼 클릭 시 모든 싱글 뷰어 재생
+        """
         for w in self.__widget_data.values():
             w: multiple_viewer_parent.VideoWidget
             w.player.play()
-            # self.__btn_play.setEnabled(False)
-            # self.__btn_pause.setEnabled(True)
 
-    def __slot_pause_all(self):
+    def __slot_pause_all(self) -> None:
+        """
+        멀티 뷰어의 pause 버튼 클릭 시 모든 싱글 뷰어 일시정지
+        """
         for w in self.__widget_data.values():
             w: multiple_viewer_parent.VideoWidget
             w.player.pause()
-            # self.__btn_play.setEnabled(True)
-            # self.__btn_pause.setEnabled(False)
 
-    def __slot_stop_all(self):
+    def __slot_stop_all(self) -> None:
+        """
+        멀티 뷰어의 stop 버튼 클릭 시 모든 싱글 뷰어 정지
+        """
         for w in self.__widget_data.values():
             w: multiple_viewer_parent.VideoWidget
             w.player.stop()
-            # self.__btn_play.setEnabled(True)
-            # self.__btn_pause.setEnabled(False)
-
-    @property
-    def get_dp_mode(self) -> str:
-        return self.__btn_mode.text()
 
 
+# TEST
 test_list = [
     "/home/rapa/Downloads/test1.MOV",
     "/home/rapa/Downloads/test2.MOV",

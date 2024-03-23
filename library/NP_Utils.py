@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 # encoding=utf-8
-# author        : Juno Park
-# created date  : 2024.02.26
-# modified date : 2024.02.26
-# description   : subprocess 및 ffmpeg을 활용한 썸네일 제작 VLC로 영상 재생
 
-# ffmpeg 모듈 설치: https://computingforgeeks.com/how-to-install-ffmpeg-on-centos-rhel-8/#google_vignette
-# ffmpeg-python : pip install ffmpeg-python
+# author        :   Juno Park
+# created date  :   2024.03.03
+# modified date :   2024.03.23
+# description   :   Nuke_player에 필요한 기능을 모아둔 유틸리티 클래스
+
+# ffmpeg 모듈 설치:   https://computingforgeeks.com/how-to-install-ffmpeg-on-centos-rhel-8/#google_vignette
+# ffmpeg-python :   pip install ffmpeg-python
 
 import sys
 import os.path
 import subprocess
+import shutil
+import mimetypes
 
 sys.path.append("/home/rapa/libs_nuke")
 import ffmpeg
@@ -25,24 +28,42 @@ class NP_Utils:
 
     @staticmethod
     def extract_thumbnail(video_path: str, output_path: str, size: str):
-        if not os.path.exists(video_path):
-            raise FileNotFoundError(f"File {video_path} not found.")
-        (
-            ffmpeg.input(video_path, ss="00:00:01")
-            .filter("scale", size)
-            .output(output_path, vframes=1)
-            .run(capture_stdout=True, capture_stderr=True)
-        )
-
-    @staticmethod
-    def change_video_bitrate(video_path: str, output_path: str, bitrate: int):
-        (ffmpeg.input(video_path).output(output_path, b=str(bitrate) + "k").run())
-
-    @staticmethod
-    def extract_thumbnail_subprocess(video_path: str, output_path: str, size: str):
+        """
+        :param video_path: 썸네일을 추출하고자 하는 영상 경로
+        :param output_path: 썸네일을 저장할 경로
+        :param size: 썸네일의 해상도
+        :return: 썸네일이 정상적으로 추출되면 True, 그렇지 않으면 False
+        """
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"File {video_path} not found.")
 
+        try:
+            (
+                ffmpeg.input(video_path, ss="00:00:01")
+                .filter("scale", size)
+                .output(output_path, vframes=1)
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+            return True
+        except ffmpeg.Error as err:
+            print("FFMPEG error:", err.stderr.decode("utf8"))
+            return False
+        except Exception as err:
+            print(f"\033[31m\nERROR: 썸네일을 추출하는 동안 오류가 발생했습니다:\033[0m", err)
+            return False
+
+    @staticmethod
+    def extract_thumbnail_subprocess(
+        video_path: str, output_path: str, size: str
+    ) -> bool:
+        """
+        :param video_path: 썸네일을 추출하고자 하는 영상 경로
+        :param output_path: 썸네일을 저장할 경로
+        :param size: 썸네일의 해상도
+        :return: 썸네일이 정상적으로 추출되면 True, 그렇지 않으면 False
+        """
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"File {video_path} not found.")
         cmd = [
             "ffmpeg",
             "-ss",
@@ -59,16 +80,58 @@ class NP_Utils:
         # ffmpeg 실행
         try:
             subprocess.run(cmd, capture_output=True, check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Error: {e}")
+            return True
+        except subprocess.CalledProcessError as err:
+            print(f"\033[31m\nERROR: 썸네일을 추출하는 동안 오류가 발생했습니다:\033[0m", err)
+            return False
 
     @staticmethod
-    def make_dir(dir_path: str):
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-            print(f"\033[32m" f"임시 디렉토리 '{dir_path}'가 생성되었습니다" f"\033[0m")
+    def make_dirs(dir_path: str) -> bool:
+        """
+        :param dir_path: 생성하고자 하는 디렉토리 경로
+        :return: 해당 경로의 디렉토리가 모두 생성되거나 이미 존재하면 True, 그렇지 않으면 False
+        """
+        try:
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path)
+                print(f"\033[32m" f"디렉토리 '{dir_path}'가 생성되었습니다" f"\033[0m")
+            else:
+                pass
+            return True
+        except Exception as err:
+            print(
+                f"\033[31m\nERROR: 디렉토리 '{dir_path}'를 생성하는 동안 오류가 발생했습니다:\033[0m", err
+            )
+            return False
+
+    @staticmethod
+    def remove_dirs(dir_path: str) -> bool:
+        """
+        :param dir_path: 지우고자 하는 디렉토리 경로
+        :return: 해당 경로의 디렉토리 모두 삭제되면 True, 그렇지 않으면 False
+        """
+        try:
+            shutil.rmtree(dir_path)
+            print(f"\033[32m\n디렉토리 '{dir_path}'가 성공적으로 삭제되었습니다.\033[0m")
+            return True
+        except Exception as err:
+            print(
+                f"\033[31m\nERROR: 디렉토리 '{dir_path}'를 삭제하는 동안 오류가 발생했습니다:\033[0m", err
+            )
+            return False
+
+    @staticmethod
+    def is_file_video(file_path: str) -> bool:
+        """
+        :param file_path: 파일 경로
+        :return: 해당 파일이 비디오 형식이면 True, 그렇지 않으면 False를 반환
+        """
+        mime_type, _ = mimetypes.guess_type(file_path)
+        # 해당 파일의 mime_type이 영상인지 검증
+        if mime_type is not None and mime_type.startswith("video"):
+            return True
         else:
-            pass
+            return False
 
     @staticmethod
     def open_with_vlc(video_path: str, vlc_path: str = "/usr/bin/vlc") -> None:
@@ -112,6 +175,43 @@ class NP_Utils:
         pixel = width * height
         result = (pixel, width, height)
         return result
+
+    @staticmethod
+    def change_video_bitrate(video_path: str, output_path: str, bitrate: int) -> bool:
+        """
+        :param video_path: 변환할 영상 파일의 경로
+        :param output_path: 저장할 경로
+        :param bitrate: 비트레이트
+        :return: 영상의 비트레이트가 정상적으로 변환되면 True, 그렇지 않으면 False
+        """
+        if os.path.exists(output_path):
+            print(f"\033[31m파일이 이미 존재합니다: {output_path}\033[0m")
+            return False
+        if os.path.exists(video_path):
+            (ffmpeg.input(video_path).output(output_path, b=str(bitrate) + "k").run())
+            return True
+        else:
+            print(f"\033[31m파일이 존재하지 않습니다: {video_path}\033[0m")
+            return False
+
+    @staticmethod
+    def delete_key_from_value(dictionary: dict, value) -> dict:
+        """
+        :param dictionary: 데이터를 삭제할 딕셔너리
+        :param value: 찾고자 하는 value
+        :return: 찾은 value가 존재하는 key값을 삭제한 후 index를 재부여한 딕셔너리
+        ex) {0: 123, 1: 456, 2: 789} >>> value = 456 >>> {0: 123, 1: 789}
+        """
+        keys_to_del = []
+        new_dict = dict()
+        for key, val in dictionary.items():
+            if val == value:
+                keys_to_del.append(key)
+        for key in keys_to_del:
+            del dictionary[key]
+        for idx, val in enumerate(list(dictionary.values())):
+            new_dict[idx] = val
+        return new_dict
 
 
 ###########################################################################################
