@@ -15,7 +15,7 @@ class NP_ItemModel(QtCore.QAbstractListModel):  # -> Item과 관련된 데이터
     def __init__(self, thumb_path_lst: list[str], video_path: list[str], parent=None):
         super().__init__(parent)
         self.__thumb_path_lst = thumb_path_lst  # 썸네일 경로가 담긴 리스트
-        self.__video_path_lst = video_path      # 영상 경로가 담긴 리스트
+        self.__video_path_lst = video_path  # 영상 경로가 담긴 리스트
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         # 아이템의 썸네일 표시
