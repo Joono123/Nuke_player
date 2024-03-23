@@ -70,8 +70,6 @@ class VideoWidget(QtWidgets.QWidget):
         self.__connections()
         self.current_fps = self.__get_current_video_fps()
 
-        self.__player.play()
-
         # Set Thread
         self.__slider_updater = Thread_Updater(self.__player, self)
         self.__slider_updater.pos_updated.connect(self.__update_slider_position)
