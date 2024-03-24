@@ -8,8 +8,11 @@
 
 
 import sys
+import importlib
 from library.player import multiple_viewer_parent
 from PySide2 import QtWidgets, QtGui, QtCore
+
+importlib.reload(multiple_viewer_parent)
 
 
 class MultipleViewer(QtWidgets.QWidget):
@@ -138,7 +141,10 @@ class MultipleViewer(QtWidgets.QWidget):
 
         self.setLayout(self.__vbox_layout)
 
-    def __setup_widgets(self):
+    def __setup_widgets(self) -> None:
+        """
+        플레이리스트의 수 만큼 뷰어를 구성하여 UI생성 및 재배치
+        """
         for idx, v_path in enumerate(self.__play_lst):
             self.widget = multiple_viewer_parent.VideoWidget(v_path)
             self.widget.setSizePolicy(

@@ -11,9 +11,9 @@ import sys
 import os
 import time
 import importlib
+import uuid
 
 sys.path.append("/home/rapa/libs_nuke")
-import uuid
 from PySide2 import QtWidgets, QtGui, QtMultimediaWidgets, QtCore, QtMultimedia
 from library import NP_Utils
 from library.qt import library as qt_lib
@@ -194,7 +194,7 @@ class VideoWidget(QtWidgets.QWidget):
         self.label_frame.setLineWidth(2)
         self.label_frame.setLayout(QtWidgets.QHBoxLayout())
         self.label_path = QtWidgets.QLabel()
-        self.label_path.setText(f"Current File: {os.path.basename(self.__video_path)}")
+        self.label_path.setText(f"{os.path.basename(self.__video_path)}")
         label_spacer = QtWidgets.QSpacerItem(
             200, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
         )

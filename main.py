@@ -11,6 +11,7 @@
 #
 # 현재 확인된 위험 :   파일을 드롭하고 썸네일을 추출하는 도중 취소하게 되면 썸네일 추출은 중단되지만,
 #                   파일 정보는 리스트 및 딕셔너리에 들어가게 됨.
+#                   간헐적으로 point error가 발생하며 프로그램이 강제 종료됨
 #
 # 추가하고자 하는 기능 : 샷그리드와 연동하여 소스 불러오기
 
@@ -20,16 +21,17 @@ import os
 import sys
 
 os.environ["NUKE_INTERACTIVE"] = "1"
-import nuke
+try:
+    import nuke
+except ModuleNotFoundError as err:
+    print(f"Nuke Import Error: {err}")
 import pathlib
 import platform
 
 sys.path.append("/home/rapa/workspace/python/Nuke_player")
 from library.player import muliple_viewer
-
 from library.player import single_viewer
 from PySide2 import QtWidgets, QtGui, QtCore
-
 from view import NP_view
 from model import NP_model
 from library.qt import library as qt_lib
@@ -280,11 +282,11 @@ class Nuke_Player(QtWidgets.QMainWindow):
         menubar = QtWidgets.QMenuBar()
         menu_file = menubar.addMenu("File")
         menu_help = menubar.addMenu("Help")
-        self.file_1 = QtWidgets.QAction("Open Directory", self)
-        self.file_2 = QtWidgets.QAction("Exit", self)
+        self.file_1 = QtWidgets.QAction("Open in Files", self)
+        self.file_2 = QtWidgets.QAction("Quit", self)
         self.help_1 = QtWidgets.QAction("What's this?", self)
         self.help_2 = QtWidgets.QAction("Keyboard Shortcut", self)
-        self.file_1.setShortcut(QtGui.QKeySequence("Ctrl+D"))
+        self.file_1.setShortcut(QtGui.QKeySequence("Ctrl+F"))
         self.file_2.setShortcut(QtGui.QKeySequence("Ctrl+Q"))
         self.help_1.setShortcut(QtGui.QKeySequence("Ctrl+W"))
         self.help_2.setShortcut(QtGui.QKeySequence("Ctrl+K"))
@@ -873,13 +875,13 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 # 사용자가 재생을 거부했을 경우 return
                 if not self.__slot_play_alert("Resolution"):
                     return
+
             self.__mult_vw = muliple_viewer.MultipleViewer(self.__play_lst)
             self.__mult_vw.show()
 
     def __slot_import_on_nuke(self) -> None:
         """
         선택된 영상을 누크에서 일정한 간격의 Read 노드로 삽입
-        *** 누크에서 실행 시에만 작동함 ***
         """
         # 아이템이 선택되었는지 검증
         if not len(self.__play_lst):
@@ -960,7 +962,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         return self.__thumb_dir
 
 
-## Nuke에서 실행
+# # Nuke에서 실행
 # def main():
 #     app = QtWidgets.QApplication.instance()
 #     if app is None:

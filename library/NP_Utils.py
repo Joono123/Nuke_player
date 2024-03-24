@@ -15,7 +15,7 @@ import subprocess
 import shutil
 import mimetypes
 
-sys.path.append("/home/rapa/libs_nuke")
+sys.path.append("/home/rapa/libs_nuke")  # ffmpeg path
 import ffmpeg
 from PySide2 import QtWidgets, QtGui
 
