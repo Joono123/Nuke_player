@@ -9,7 +9,7 @@
 
 import sys
 from PySide2 import QtWidgets, QtCore, QtGui, QtMultimediaWidgets, QtMultimedia
-from library.qt import library as qt_lib
+from NP_libs.qt import library as qt_lib
 
 
 class VideoWidget(QtWidgets.QWidget):
@@ -22,16 +22,19 @@ class VideoWidget(QtWidgets.QWidget):
         self.__playlist = playlist
 
     def init_ui(self):
-        self.setStyleSheet("color: rgb(255, 255, 255);"
-                           "background-color: rgb(70, 70, 70);")
-        self.player = QtMultimedia.QMediaPlayer(None, QtMultimedia.QMediaPlayer.VideoSurface)
+        self.setStyleSheet(
+            "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
+        )
+        self.player = QtMultimedia.QMediaPlayer(
+            None, QtMultimedia.QMediaPlayer.VideoSurface
+        )
         self.play_lst = QtMultimedia.QMediaPlaylist()
         self.__add_play_lst(self.play_lst)
         self.player.setPlaylist(self.play_lst)
 
         v_widget = QtMultimediaWidgets.QVideoWidget()
         v_widget.setFixedSize(800, 450)
-        v_widget.setStyleSheet('background-color: rgb(0, 0, 0);')
+        v_widget.setStyleSheet("background-color: rgb(0, 0, 0);")
 
         # btns
         self.btn_open = QtWidgets.QPushButton()
@@ -40,7 +43,9 @@ class VideoWidget(QtWidgets.QWidget):
         self.btn_stop = QtWidgets.QPushButton()
         self.btn_stop.setEnabled(False)
         self.btn_play.setEnabled(False)
-        self.btn_open.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_DirOpenIcon))
+        self.btn_open.setIcon(
+            self.style().standardIcon(QtWidgets.QStyle.SP_DirOpenIcon)
+        )
         self.btn_play.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay))
         self.btn_stop.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MediaStop))
 
@@ -97,22 +102,26 @@ class VideoWidget(QtWidgets.QWidget):
                 print(f"플레이 리스트: {self.play_lst}")
 
     def closeEvent(self, event):
-        if self.player.state() in [QtMultimedia.QMediaPlayer.PlayingState,
-                                   QtMultimedia.QMediaPlayer.PausedState]:
+        if self.player.state() in [
+            QtMultimedia.QMediaPlayer.PlayingState,
+            QtMultimedia.QMediaPlayer.PausedState,
+        ]:
             self.player.stop()
-            print('Player Stopped')
+            print("Player Stopped")
         event.accept()
 
     def open_file(self):
         filename, etc = QtWidgets.QFileDialog.getOpenFileName(self, "Open Video")
 
-        if filename != '':
-            self.player.setMedia(QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(filename)))
+        if filename != "":
+            self.player.setMedia(
+                QtMultimedia.QMediaContent(QtCore.QUrl.fromLocalFile(filename))
+            )
             self.btn_play.setEnabled(True)
             self.btn_play.setStyleSheet("background-color: rgb(80,80,80);")
             self.btn_stop.setEnabled(True)
             self.btn_stop.setStyleSheet("background-color: rgb(80,80,80);")
-            print(f'Loaded: {filename}')
+            print(f"Loaded: {filename}")
 
     def stop_video(self):
         self.slider.setValue(0)
@@ -127,10 +136,14 @@ class VideoWidget(QtWidgets.QWidget):
 
     def state_changed(self, ste):
         if self.player.state() == QtMultimedia.QMediaPlayer.PlayingState:
-            self.btn_play.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MediaPause))
+            self.btn_play.setIcon(
+                self.style().standardIcon(QtWidgets.QStyle.SP_MediaPause)
+            )
 
         else:
-            self.btn_play.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay))
+            self.btn_play.setIcon(
+                self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay)
+            )
 
     def pos_changed(self, pos):
         self.slider.setValue(pos)
@@ -149,13 +162,15 @@ class VideoWidget(QtWidgets.QWidget):
 
         remain_time_str = QtCore.QTime(0, 0).addMSecs(remain_time).toString("hh:mm:ss")
         current_time_str = QtCore.QTime(0, 0).addMSecs(current_pos).toString("hh:mm:ss")
-        total_time_str = QtCore.QTime(0, 0).addMSecs(total_duration).toString("hh:mm:ss")
+        total_time_str = (
+            QtCore.QTime(0, 0).addMSecs(total_duration).toString("hh:mm:ss")
+        )
         self.label_remain_time.setText(remain_time_str)
-        self.label_current_time.setText(current_time_str + '/' + total_time_str)
+        self.label_current_time.setText(current_time_str + "/" + total_time_str)
 
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    vid = VideoWidget(['/home/rapa/Downloads/test2.MOV'])
+    vid = VideoWidget(["/home/rapa/Downloads/test2.MOV"])
     vid.show()
     sys.exit(app.exec_())

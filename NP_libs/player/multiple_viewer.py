@@ -8,16 +8,30 @@
 
 
 import sys
+import os
 import importlib
-from library.player import multiple_viewer_parent
+
+sys.path.append("/home/rapa/workspace/python/Nuke_player")
+from NP_libs.player import multiple_viewer_parent
 from PySide2 import QtWidgets, QtGui, QtCore
 
 importlib.reload(multiple_viewer_parent)
 
 
 class MultipleViewer(QtWidgets.QWidget):
-    def __init__(self, play_lst: list[str], parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
+        home_dir = os.path.expanduser("~")
+        thumb_dir = os.path.join(home_dir, ".NP_temp")  # 숨김 상태로 생성
+        self.__temp_file = os.path.join(
+            thumb_dir, "playlist.txt"
+        )  # -> 플레이리스트를 작성할 임시 파일
+        p = self.__get_playlist()
+        self.setWindowIcon(
+            QtGui.QIcon(
+                "/home/rapa/workspace/python/Nuke_player/resource/png/video-player.ico"
+            )
+        )
         self.setWindowModality(QtCore.Qt.WindowModal)
 
         # Layout
@@ -26,13 +40,31 @@ class MultipleViewer(QtWidgets.QWidget):
         self.__grid_layout.setSpacing(10)
 
         # vars
-        self.__play_lst = play_lst
+        self.__play_lst = p
         self.__widget_data = dict()
 
         # btns
         self.__setup_widgets()
         self.__setup_ui()
         self.__connections()
+
+    def __get_playlist(self) -> list:
+        """
+        :return: 임시 디렉토리 저장된 플레이리스트를 읽어와 변수에 전달
+        """
+        play_lst = []
+
+        try:
+            with open(self.__temp_file, "r") as fp:
+                lines = fp.readlines()
+        except FileNotFoundError as err:
+            print(err)
+            return []
+
+        for line in lines:
+            # \n 제거 후 리스트에 추가
+            play_lst.append(line.rstrip())
+        return play_lst
 
     def closeEvent(self, event) -> None:
         """
@@ -270,6 +302,6 @@ test_list = [
 ]
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    mv = MultipleViewer(test_list)
+    mv = MultipleViewer()
     mv.show()
     app.exec_()

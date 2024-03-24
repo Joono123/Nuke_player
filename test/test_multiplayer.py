@@ -1,6 +1,6 @@
 from PySide2 import QtWidgets, QtGui, QtCore, QtMultimedia, QtMultimediaWidgets
-from library.system import library as sys_lib
-from library.qt import library as qt_lib
+from NP_libs.system import library as sys_lib
+from NP_libs.qt import library as qt_lib
 
 
 class MultiVideo_Thread(QtCore.QThread):

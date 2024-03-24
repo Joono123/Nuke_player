@@ -9,14 +9,18 @@
 
 import os.path
 import sys
+import importlib
 
-sys.path.append("/home/rapa/libs_nuke")
+# sys.path.append("/home/rapa/libs_nuke")
 import time
 from PySide2 import QtWidgets, QtCore, QtGui, QtMultimediaWidgets, QtMultimedia
 
 sys.path.append("/home/rapa/workspace/python/Nuke_player")
-from library.qt import library as qt_lib
-from library.NP_Utils import NP_Utils
+from NP_libs.qt import library as qt_lib
+from NP_libs import NP_Utils
+
+importlib.reload(qt_lib)
+importlib.reload(NP_Utils)
 
 
 class Thread_Updater(QtCore.QThread):
@@ -53,16 +57,27 @@ class Thread_Updater(QtCore.QThread):
 
 
 class VideoWidget(QtWidgets.QWidget):
-    def __init__(self, playlist: list[str], parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-
+        # 경로 지정
+        home_dir = os.path.expanduser("~")
+        thumb_dir = os.path.join(home_dir, ".NP_temp")  # 숨김 상태로 생성
+        self.__temp_file = os.path.join(
+            thumb_dir, "playlist.txt"
+        )  # -> 플레이리스트를 작성할 임시 파일
+        p = self.__get_playlist()
         # vars
-        self.path_lst = playlist
+        self.path_lst = p
         self.__dp_idx = 1
-        self.__NP_Util = NP_Utils
+        self.__NP_Util = NP_Utils.NP_Utils
 
         # Set UI
         self.setWindowTitle("Single Viewer")
+        self.setWindowIcon(
+            QtGui.QIcon(
+                "/home/rapa/workspace/python/Nuke_player/resource/png/video-player.ico"
+            )
+        )
         self.setAcceptDrops(True)
         qt_lib.QtLibs.center_on_screen(self)
 
@@ -75,6 +90,24 @@ class VideoWidget(QtWidgets.QWidget):
         self.__slider_updater.pos_updated.connect(self.__update_slider_position)
         self.__slider_updater.dur_updated.connect(self.__slot_label_info)
         self.__slider_updater.start()
+
+    def __get_playlist(self) -> list:
+        """
+        :return: 임시 디렉토리 저장된 플레이리스트를 읽어와 변수에 전달
+        """
+        play_lst = []
+
+        try:
+            with open(self.__temp_file, "r") as fp:
+                lines = fp.readlines()
+        except FileNotFoundError as err:
+            print(err)
+            return []
+
+        for line in lines:
+            # \n 제거 후 리스트에 추가
+            play_lst.append(line.rstrip())
+        return play_lst
 
     def __init_ui(self) -> None:
         """
@@ -550,6 +583,6 @@ t_path_str = "/home/rapa/Downloads/test1.MOV"
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    vid = VideoWidget(t_path)
+    vid = VideoWidget()
     vid.show()
     sys.exit(app.exec_())

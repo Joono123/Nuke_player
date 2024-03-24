@@ -33,9 +33,7 @@ class MyUI(QMainWindow):
                 print(f"File not found: {file_path}")
 
 
-# 실행할 때만 실행되도록 설정
 if __name__ == "__main__":
-    # NUKE에서 MyUI를 불러오기
     # app = QApplication([])
     ui = MyUI()
     ui.show()

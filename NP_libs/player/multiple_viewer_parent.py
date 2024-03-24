@@ -11,13 +11,13 @@ import sys
 import os
 import time
 import importlib
-import uuid
 
-sys.path.append("/home/rapa/libs_nuke")
+# sys.path.append("/home/rapa/libs_nuke")
+import uuid
 from PySide2 import QtWidgets, QtGui, QtMultimediaWidgets, QtCore, QtMultimedia
-from library import NP_Utils
-from library.qt import library as qt_lib
-from library.player import single_viewer
+from NP_libs import NP_Utils
+from NP_libs.qt import library as qt_lib
+from NP_libs.player import single_viewer
 
 importlib.reload(NP_Utils)
 importlib.reload(qt_lib)

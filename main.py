@@ -18,6 +18,7 @@
 
 import importlib
 import os
+import subprocess
 import sys
 
 os.environ["NUKE_INTERACTIVE"] = "1"
@@ -29,22 +30,18 @@ import pathlib
 import platform
 
 sys.path.append("/home/rapa/workspace/python/Nuke_player")
-from library.player import muliple_viewer
-from library.player import single_viewer
 from PySide2 import QtWidgets, QtGui, QtCore
 from view import NP_view
 from model import NP_model
-from library.qt import library as qt_lib
-from library.system import library as sys_lib
-from library import NP_Utils
+from NP_libs.qt import library as qt_lib
+from NP_libs.system import library as sys_lib
+from NP_libs import NP_Utils
 
 importlib.reload(NP_view)
 importlib.reload(NP_model)
 importlib.reload(NP_Utils)
 importlib.reload(qt_lib)
 importlib.reload(sys_lib)
-importlib.reload(muliple_viewer)
-importlib.reload(single_viewer)
 
 
 class FileProcessingThread(QtCore.QThread):
@@ -113,14 +110,16 @@ class Nuke_Player(QtWidgets.QMainWindow):
         super().__init__()
         # 변수 설정
         self.__NP_util = NP_Utils
-        self.__single_viewer = single_viewer
         self.__item_listview = NP_view.NP_ItemView()
         self.__text_listview = NP_view.NP_ListView()
 
         # 썸네일을 임시 저장할 상대경로 설정
         # self.current_dir = os.path.dirname(__file__)
         self.home_dir = os.path.expanduser("~")
-        self.__thumb_dir = os.path.join(self.home_dir, ".NP_thumbnails")  # -> 숨김 상태로 생성
+        self.__thumb_dir = os.path.join(self.home_dir, ".NP_temp")  # 숨김 상태로 생성
+        self.__temp_file = os.path.join(
+            self.__thumb_dir, "playlist.txt"
+        )  # -> 플레이리스트를 작성할 임시 파일
 
         # 해당 디렉토리가 없을 경우 생성
         self.__NP_util.NP_Utils.make_dirs(self.__thumb_dir)
@@ -129,7 +128,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__file_lst = list()  # file_data의 value값을 리스트로 저장
         self.__thumb_lst = list()  # 썸네일 디렉토리 내의 파일 경로를 리스트로 저장
         self.__play_lst = list()  # 선택된 파일의 경로를 인덱스로 저장
-        self.__play_lst_basename = list()
+        self.__play_lst_basename = list()  # 파일 경로의 basename만 저장
 
         # 모델 설정
         self.__itemview_model = NP_model.NP_ItemModel(self.__thumb_lst, self.__file_lst)
@@ -138,6 +137,11 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__text_listview.setModel(self.__textview_model)
 
         # Init set
+        self.setWindowIcon(
+            QtGui.QIcon(
+                "/home/rapa/workspace/python/Nuke_player/resource/png/video-player.ico"
+            )
+        )
         self.__set_ui()
         self.__set_menu()
         self.__connection()
@@ -602,6 +606,10 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 self.__play_lst[select_idx],
                 self.__play_lst[select_idx - 1],
             )
+            # 플레이리스트를 텍스트 파일로 작성
+            with open(self.__temp_file, "w") as fp:
+                for path in self.__play_lst:
+                    fp.write("%s\n" % path)
             # 모델 갱신 후 아이템 재선택
             self.__textview_model = NP_model.NP_ListModel(self.__play_lst)
             self.__text_listview.setModel(self.__textview_model)
@@ -621,6 +629,10 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 self.__play_lst[select_idx + 1],
                 self.__play_lst[select_idx],
             )
+            # 플레이리스트를 텍스트 파일로 작성
+            with open(self.__temp_file, "w") as fp:
+                for path in self.__play_lst:
+                    fp.write("%s\n" % path)
             # 모델 갱신 후 아이템 재선택
             self.__textview_model = NP_model.NP_ListModel(self.__play_lst)
             self.__text_listview.setModel(self.__textview_model)
@@ -816,6 +828,10 @@ class Nuke_Player(QtWidgets.QMainWindow):
             if f_path not in self.__play_lst:
                 self.__play_lst.append(f_path)
                 self.__play_lst_basename.append(os.path.basename(f_path))
+                # 플레이리스트를 텍스트 파일로 작성
+                with open(self.__temp_file, "w") as fp:
+                    for path in self.__play_lst:
+                        fp.write("%s\n" % path)
 
         # 선택이 해제된 아이템을 리스트에서 제거
         for idx in deselected.indexes():
@@ -825,6 +841,10 @@ class Nuke_Player(QtWidgets.QMainWindow):
             if f_path in self.__play_lst:
                 self.__play_lst.remove(f_path)
                 self.__play_lst_basename.remove(os.path.basename(f_path))
+                # 플레이리스트를 텍스트 파일로 작성
+                with open(self.__temp_file, "w") as fp:
+                    for path in self.__play_lst:
+                        fp.write("%s\n" % path)
 
         self.__textview_model = NP_model.NP_ListModel(self.__play_lst)
 
@@ -843,13 +863,11 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
         # 멀티 뷰어가 선택되었으나 선택된 아이템이 1개인 경우 싱글 뷰어로 실행
         if self.__check_viewer.isChecked() and len(self.__play_lst) == 1:
-            self.__sing_vw = self.__single_viewer.VideoWidget(self.__play_lst)
-            self.__sing_vw.show()
+            self.__exec_viewer("sv")
 
         # 멀티 뷰어가 선택되지 않으면 싱글 뷰어로 실행
         elif not self.__check_viewer.isChecked():
-            self.__sing_vw = self.__single_viewer.VideoWidget(self.__play_lst)
-            self.__sing_vw.show()
+            self.__exec_viewer("sv")
 
         # 멀티 뷰어가 선택되고 아이템이 2개 이상인 경우 멀티 뷰어로 실행
         elif self.__check_viewer.isChecked() and len(self.__play_lst) > 1:
@@ -876,8 +894,14 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 if not self.__slot_play_alert("Resolution"):
                     return
 
-            self.__mult_vw = muliple_viewer.MultipleViewer(self.__play_lst)
-            self.__mult_vw.show()
+            self.__exec_viewer("mv")
+
+    @staticmethod
+    def __exec_viewer(viewer: str):
+        if viewer == "sv":
+            subprocess.Popen("/home/rapa/workspace/python/Nuke_player/NP_SV")
+        else:
+            subprocess.Popen("/home/rapa/workspace/python/Nuke_player/NP_MV")
 
     def __slot_import_on_nuke(self) -> None:
         """
@@ -903,7 +927,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 # 다음 노드의 Y 위치 설정
                 x_position += node_gap
             except AttributeError as err:
-                self.__lineEdit_debug.setText("해당 기능은 Nuke에서 실행 시 작동합니다.")
+                self.__lineEdit_debug.setText("ERROR: 해당 기능은 Nuke에서 실행 시 작동합니다.")
                 self.__slot_messagebox("Nuke")
                 return
 
@@ -962,24 +986,8 @@ class Nuke_Player(QtWidgets.QMainWindow):
         return self.__thumb_dir
 
 
-# # Nuke에서 실행
-# def main():
-#     app = QtWidgets.QApplication.instance()
-#     if app is None:
-#         app = QtWidgets.QApplication(sys.argv)
-#
-#     np = Nuke_Player()
-#
-#     parent = QtWidgets.QApplication.activeWindow()
-#     np.setParent(parent, QtCore.Qt.Window)
-#
-#     np.show()
-#
-#     sys.exit(app.exec_())
-
-
 if __name__ == "__main__":
-    app = QtWidgets.QApplication(sys.argv)
+    # app = QtWidgets.QApplication(sys.argv)
     NP = Nuke_Player()
     NP.show()
-    app.exec_()
+    # app.exec_()

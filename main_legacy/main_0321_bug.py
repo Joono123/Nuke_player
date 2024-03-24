@@ -20,16 +20,16 @@ import mimetypes
 import platform
 
 sys.path.append("/")
-from library.player import muliple_viewer
+from NP_libs.player import multiple_viewer
 
-from library.player import single_viewer
+from NP_libs.player import single_viewer
 from PySide2 import QtWidgets, QtGui, QtCore
 
 from view import NP_view
 from model import NP_model
-from library.qt import library as qt_lib
-from library.system import library as sys_lib
-from library import NP_Utils
+from NP_libs.qt import library as qt_lib
+from NP_libs.system import library as sys_lib
+from NP_libs import NP_Utils
 
 importlib.reload(NP_view)
 importlib.reload(NP_model)
