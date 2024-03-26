@@ -70,13 +70,12 @@ class VideoWidget(QtWidgets.QWidget):
 
         # Set UI
         self.setWindowTitle("Nuke Player")
+        self.setAcceptDrops(True)
         qt_lib.QtLibs.center_on_screen(self)
 
         self.__init_ui()
         self.__connections()
         self.__current_fps = self.__get_current_video_fps()
-
-        # self.player.play()
 
         # Set Thread
         self.update_thread = Thread_Updater(self.player, self)

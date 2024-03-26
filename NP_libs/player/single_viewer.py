@@ -57,7 +57,7 @@ class Thread_Updater(QtCore.QThread):
 
 
 class VideoWidget(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, playlist: list[str] = None, parent=None):
         super().__init__(parent)
         # 경로 지정
         home_dir = os.path.expanduser("~")
@@ -67,7 +67,10 @@ class VideoWidget(QtWidgets.QWidget):
         )  # -> 플레이리스트를 작성할 임시 파일
         p = self.__get_playlist()
         # vars
-        self.path_lst = p
+        if playlist is None:
+            self.path_lst = p
+        else:
+            self.path_lst = playlist
         self.__dp_idx = 1
         self.__NP_Util = NP_Utils.NP_Utils
 

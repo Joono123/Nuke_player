@@ -25,7 +25,7 @@ os.environ["NUKE_INTERACTIVE"] = "1"
 try:
     import nuke
 except ModuleNotFoundError as err:
-    print(f"Nuke Import Error: {err}")
+    print(f"\033[31mNuke Import Error: {err}\033[0m")
 import pathlib
 import platform
 
