@@ -7,13 +7,13 @@
 # description   :   누크에서 작업을 시작하기 전, 다양한 소스를 동시에 확인하는 것에 어려움이 있는데,
 #                   이러한 불편함을 해소하고자, 유저 친화적인 플레이어를 제작.
 #                   드래그앤드랍으로 간편하게 소스를 등록하고, 영상을 재생하며,
-#                   소스를 확인하는 동시에 DCC툴의 노드로 불러오는 것이 가능함.
+#                   소스를 확인하는 동시에 Nuke의 Read 노드로 불러오는 것이 가능함.
 #
 # 현재 확인된 위험 :   파일을 드롭하고 썸네일을 추출하는 도중 취소하게 되면 썸네일 추출은 중단되지만,
 #                   파일 정보는 리스트 및 딕셔너리에 들어가게 됨.
 #                   간헐적으로 point error가 발생하며 프로그램이 강제 종료됨
 #
-# 추가하고자 하는 기능 : 샷그리드와 연동하여 소스 불러오기
+# 추가하고자 하는 기능 : 샷그리드와 연동하여 소스 불러오기, 소스 버전 관리,
 
 
 import importlib
@@ -83,12 +83,12 @@ class FileProcessingThread(QtCore.QThread):
 
 
 class LoadingDialog(QtWidgets.QProgressDialog):
+    # 파일 드롭 시 발생하는 다이얼로그
     def __init__(self, total_files, parent=None):
         super().__init__(parent)
         self.setWindowTitle("File Loading")
         self.setLabelText("파일을 로드 중입니다.")
         self.setFixedSize(300, 100)
-        # self.setCancelButton(None)
         self.setRange(0, total_files)
         self.setValue(0)
         self.setFont(QtGui.QFont("Sans Serif", 10))
@@ -103,6 +103,22 @@ class LoadingDialog(QtWidgets.QProgressDialog):
     def reject(self):
         self.canceled.emit()
         super().reject()
+
+
+class LoadingDialog_loop(QtWidgets.QProgressDialog):
+    # 뷰어 실행 시 발생하는 다이얼로그
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Viewer Playing")
+        self.setLabelText("뷰어가 실행 중입니다,\n동시에 하나의 플레이어만 사용하는 것을 권장합니다.")
+        self.setFixedSize(320, 120)
+        self.setCancelButtonText("Ok")
+        self.setRange(0, 0)
+        self.setFont(QtGui.QFont("Sans Serif", 10))
+        self.setStyleSheet(
+            "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
+        )
+        self.setModal(True)
 
 
 class Nuke_Player(QtWidgets.QMainWindow):
@@ -273,7 +289,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
         widget_1.setLayout(main_hbox)
         self.setCentralWidget(widget_1)
         qt_lib.QtLibs.center_on_screen(self)
-        self.setWindowTitle("Video Player")
+        self.setWindowTitle("Nuke Player")
         self.setStyleSheet(
             "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
         )
@@ -864,10 +880,16 @@ class Nuke_Player(QtWidgets.QMainWindow):
         # 멀티 뷰어가 선택되었으나 선택된 아이템이 1개인 경우 싱글 뷰어로 실행
         if self.__check_viewer.isChecked() and len(self.__play_lst) == 1:
             self.__exec_viewer("sv")
+            self.__playing = LoadingDialog_loop()
+            self.__playing.setWindowModality(QtCore.Qt.ApplicationModal)
+            self.__playing.show()
 
         # 멀티 뷰어가 선택되지 않으면 싱글 뷰어로 실행
         elif not self.__check_viewer.isChecked():
             self.__exec_viewer("sv")
+            self.__playing = LoadingDialog_loop()
+            self.__playing.setWindowModality(QtCore.Qt.ApplicationModal)
+            self.__playing.show()
 
         # 멀티 뷰어가 선택되고 아이템이 2개 이상인 경우 멀티 뷰어로 실행
         elif self.__check_viewer.isChecked() and len(self.__play_lst) > 1:
@@ -895,6 +917,9 @@ class Nuke_Player(QtWidgets.QMainWindow):
                     return
 
             self.__exec_viewer("mv")
+            self.__playing = LoadingDialog_loop()
+            self.__playing.setWindowModality(QtCore.Qt.ApplicationModal)
+            self.__playing.show()
 
     @staticmethod
     def __exec_viewer(viewer: str):
@@ -987,7 +1012,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
 
 if __name__ == "__main__":
-    # app = QtWidgets.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     NP = Nuke_Player()
     NP.show()
-    # app.exec_()
+    app.exec_()

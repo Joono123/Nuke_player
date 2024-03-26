@@ -91,7 +91,7 @@ class VideoWidget(QtWidgets.QWidget):
         self.__slider_updater.dur_updated.connect(self.__slot_label_info)
         self.__slider_updater.start()
 
-    def __get_playlist(self) -> list:
+    def __get_playlist(self):
         """
         :return: 임시 디렉토리 저장된 플레이리스트를 읽어와 변수에 전달
         """
@@ -101,8 +101,8 @@ class VideoWidget(QtWidgets.QWidget):
             with open(self.__temp_file, "r") as fp:
                 lines = fp.readlines()
         except FileNotFoundError as err:
-            print(err)
-            return []
+            qt_lib.QtLibs.critical_dialog("ERROR", "플레이리스트가 설정되지 않았습니다.")
+            exit()
 
         for line in lines:
             # \n 제거 후 리스트에 추가

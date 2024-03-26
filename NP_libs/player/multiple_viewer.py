@@ -13,9 +13,11 @@ import importlib
 
 sys.path.append("/home/rapa/workspace/python/Nuke_player")
 from NP_libs.player import multiple_viewer_parent
+from NP_libs.qt import library as qt_lib
 from PySide2 import QtWidgets, QtGui, QtCore
 
 importlib.reload(multiple_viewer_parent)
+importlib.reload(qt_lib)
 
 
 class MultipleViewer(QtWidgets.QWidget):
@@ -48,7 +50,7 @@ class MultipleViewer(QtWidgets.QWidget):
         self.__setup_ui()
         self.__connections()
 
-    def __get_playlist(self) -> list:
+    def __get_playlist(self):
         """
         :return: 임시 디렉토리 저장된 플레이리스트를 읽어와 변수에 전달
         """
@@ -58,8 +60,8 @@ class MultipleViewer(QtWidgets.QWidget):
             with open(self.__temp_file, "r") as fp:
                 lines = fp.readlines()
         except FileNotFoundError as err:
-            print(err)
-            return []
+            qt_lib.QtLibs.critical_dialog("ERROR", "플레이리스트가 설정되지 않았습니다.")
+            exit()
 
         for line in lines:
             # \n 제거 후 리스트에 추가
@@ -177,6 +179,9 @@ class MultipleViewer(QtWidgets.QWidget):
         """
         플레이리스트의 수 만큼 뷰어를 구성하여 UI생성 및 재배치
         """
+        if self.__play_lst is None:
+            print(f"NONE playlist")
+            return
         for idx, v_path in enumerate(self.__play_lst):
             self.widget = multiple_viewer_parent.VideoWidget(v_path)
             self.widget.setSizePolicy(
@@ -288,18 +293,7 @@ class MultipleViewer(QtWidgets.QWidget):
 
 
 # TEST
-test_list = [
-    "/home/rapa/Downloads/test1.MOV",
-    "/home/rapa/Downloads/test2.MOV",
-    "/home/rapa/Downloads/test_1280 (copy).mp4",
-    "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    "/home/rapa/Downloads/test_1280 (another copy).mp4",
-    "/home/rapa/Downloads/test_1280 (another copy).mp4",
-]
+test_list = []
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     mv = MultipleViewer()

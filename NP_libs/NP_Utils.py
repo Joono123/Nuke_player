@@ -86,6 +86,37 @@ class NP_Utils:
             return False
 
     @staticmethod
+    def get_video_fps(file_path: str) -> int:
+        """
+        :param file_path: fps를 추출할 파일의 경로
+        :return: numerator와 denominator를 추출하여 fps값을 반환
+        """
+        probe = ffmpeg.probe(file_path)
+        video_info = next(
+            stream for stream in probe["streams"] if stream["codec_type"] == "video"
+        )
+        fps_str = video_info["avg_frame_rate"]
+        numerator, denominator = map(int, fps_str.split("/"))
+        return numerator / denominator
+
+    @staticmethod
+    def get_video_resolution(file_path: str) -> tuple:
+        """
+        :param file_path: 해상도를 추출할 파일의 경로
+        :return: 해상도를 width와 heiget 형태로 추출하여 pixel, width, height값을 튜플로 반환
+        """
+        probe = ffmpeg.probe(file_path)
+        video_stream = next(
+            (stream for stream in probe["streams"] if stream["codec_type"] == "video"),
+            None,
+        )
+        width = int(video_stream["width"])
+        height = int(video_stream["height"])
+        pixel = width * height
+        result = (pixel, width, height)
+        return result
+
+    @staticmethod
     def make_dirs(dir_path: str) -> bool:
         """
         :param dir_path: 생성하고자 하는 디렉토리 경로
@@ -134,6 +165,25 @@ class NP_Utils:
             return False
 
     @staticmethod
+    def delete_key_from_value(dictionary: dict, value) -> dict:
+        """
+        :param dictionary: 데이터를 삭제할 딕셔너리
+        :param value: 찾고자 하는 value
+        :return: 찾은 value가 존재하는 key값을 삭제한 후 index를 재부여한 딕셔너리
+        ex) {0: 123, 1: 456, 2: 789} >>> value = 456 >>> {0: 123, 1: 789}
+        """
+        keys_to_del = []
+        new_dict = dict()
+        for key, val in dictionary.items():
+            if val == value:
+                keys_to_del.append(key)
+        for key in keys_to_del:
+            del dictionary[key]
+        for idx, val in enumerate(list(dictionary.values())):
+            new_dict[idx] = val
+        return new_dict
+
+    @staticmethod
     def open_with_vlc(video_path: str, vlc_path: str = "/usr/bin/vlc") -> None:
         """
         :param video_path: 재생할 영상의 경로
@@ -144,37 +194,6 @@ class NP_Utils:
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"File {video_path} not found")
         subprocess.Popen([vlc_path, video_path], shell=True)
-
-    @staticmethod
-    def get_video_fps(file_path: str) -> int:
-        """
-        :param file_path: fps를 추출할 파일의 경로
-        :return: numerator와 denominator를 추출하여 fps값을 반환
-        """
-        probe = ffmpeg.probe(file_path)
-        video_info = next(
-            stream for stream in probe["streams"] if stream["codec_type"] == "video"
-        )
-        fps_str = video_info["avg_frame_rate"]
-        numerator, denominator = map(int, fps_str.split("/"))
-        return numerator / denominator
-
-    @staticmethod
-    def get_video_resolution(file_path: str) -> tuple:
-        """
-        :param file_path: 해상도를 추출할 파일의 경로
-        :return: 해상도를 width와 heiget 형태로 추출하여 pixel, width, height값을 튜플로 반환
-        """
-        probe = ffmpeg.probe(file_path)
-        video_stream = next(
-            (stream for stream in probe["streams"] if stream["codec_type"] == "video"),
-            None,
-        )
-        width = int(video_stream["width"])
-        height = int(video_stream["height"])
-        pixel = width * height
-        result = (pixel, width, height)
-        return result
 
     @staticmethod
     def change_video_bitrate(video_path: str, output_path: str, bitrate: int) -> bool:
@@ -193,25 +212,6 @@ class NP_Utils:
         else:
             print(f"\033[31m파일이 존재하지 않습니다: {video_path}\033[0m")
             return False
-
-    @staticmethod
-    def delete_key_from_value(dictionary: dict, value) -> dict:
-        """
-        :param dictionary: 데이터를 삭제할 딕셔너리
-        :param value: 찾고자 하는 value
-        :return: 찾은 value가 존재하는 key값을 삭제한 후 index를 재부여한 딕셔너리
-        ex) {0: 123, 1: 456, 2: 789} >>> value = 456 >>> {0: 123, 1: 789}
-        """
-        keys_to_del = []
-        new_dict = dict()
-        for key, val in dictionary.items():
-            if val == value:
-                keys_to_del.append(key)
-        for key in keys_to_del:
-            del dictionary[key]
-        for idx, val in enumerate(list(dictionary.values())):
-            new_dict[idx] = val
-        return new_dict
 
 
 ###########################################################################################
