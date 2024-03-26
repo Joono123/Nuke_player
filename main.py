@@ -489,6 +489,8 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 # 파일 유형이 영상이 맞는지 확인
                 if not self.__NP_util.NP_Utils.is_file_video(url_str):
                     print(f"\033[31mERROR: '{file_path}'는 지원하지 않는 형식입니다.\033[0m")
+                    ext = os.path.splitext(os.path.basename(file_path))[1]
+                    self.__slot_messagebox("File Type", ext)
                     return
 
                 # 파일이 이미 등록되어 있는지 확인
@@ -659,7 +661,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
                     model_index, QtCore.QItemSelectionModel.ClearAndSelect
                 )
 
-    def __slot_messagebox(self, error: str) -> None:
+    def __slot_messagebox(self, error: str, description=None) -> None:
         """
         :param error: 에러 코드
         에러 코드를 인자로 받아 특정 에러를 메시지 박스로 발생시킴
@@ -668,28 +670,31 @@ class Nuke_Player(QtWidgets.QMainWindow):
         box = self.__NP_util.CustomMessageBox(self.__icon_error)
         box.setWindowTitle(f"{error} Error")
         if error == "Play":
-            box.setText("\n재생할 파일을 선택하세요")
+            box.setText("\n재생할 파일을 선택하세요.")
             box.exec_()
         elif error == "Import":
-            box.setText("\n삽입할 파일을 선택하세요")
+            box.setText("\n삽입할 파일을 선택하세요.")
             box.exec_()
         elif error in ["Open", "Delete"]:
-            box.setText("\n파일이 선택되지 않았습니다")
+            box.setText("\n파일이 선택되지 않았습니다.")
             box.exec_()
         elif error == "Directory":
-            box.setText("\n디렉토리가 존재하지 않습니다")
+            box.setText("\n디렉토리가 존재하지 않습니다.")
             box.exec_()
         elif error == "File":
-            box.setText("\n파일이 존재하지 않습니다")
+            box.setText("\n파일이 존재하지 않습니다.")
             box.exec_()
         elif error == "Move":
-            box.setText("\n순서를 변경할 파일을 선택하세요")
+            box.setText("\n순서를 변경할 파일을 선택하세요.")
             box.exec_()
         elif error == "Playlist":
-            box.setText("\n멀티 뷰어는 최대 12개의 영상까지만 재생할 수 있습니다")
+            box.setText("\n멀티 뷰어는 최대 12개의 영상까지만 재생할 수 있습니다.")
             box.exec_()
         elif error == "Nuke":
-            box.setText("\n해당 기능은 Nuke에서 실행 시 작동합니다")
+            box.setText("\n해당 기능은 Nuke에서 실행 시 작동합니다.")
+            box.exec_()
+        elif error == "File Type":
+            box.setText(f"\n'{description}'은(는) 지원하지 않는 형식입니다.")
             box.exec_()
 
     def __slot_play_alert(self, error) -> bool:
