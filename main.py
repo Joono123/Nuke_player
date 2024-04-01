@@ -18,6 +18,7 @@
 
 import importlib
 import os
+import pprint
 import subprocess
 import sys
 
@@ -44,7 +45,35 @@ importlib.reload(qt_lib)
 importlib.reload(sys_lib)
 
 
-class FileProcessingThread(QtCore.QThread):
+class Image_2_Video_Thread(QtCore.QThread):
+    thread_finished = QtCore.Signal()
+
+    def __init__(self, file_path: str, thumbnail_dir: str, ext: str):
+        super().__init__()
+        self.__file_path = file_path
+        self.__thumb_dir = thumbnail_dir
+        self.__ext = ext
+        self.__NP_util = NP_Utils
+        self.__name = os.path.basename(self.__file_path)
+
+    def run(self):
+        self.__dropped_dir()
+        self.thread_finished.emit()
+
+    def __dropped_dir(self):
+        self.__output = self.__NP_util.NP_Utils.images_to_video(
+            self.__file_path, self.__thumb_dir, self.__ext, self.__name
+        )
+
+    def stop(self):
+        self.quit()
+        self.wait(10000)
+
+    def cancle(self):
+        os.remove(self.__output)
+
+
+class Extract_Tuhmbnails_Thread(QtCore.QThread):
     thumbnail_extract = QtCore.Signal()
     thread_finished = QtCore.Signal()
 
@@ -84,10 +113,10 @@ class FileProcessingThread(QtCore.QThread):
 
 class LoadingDialog(QtWidgets.QProgressDialog):
     # 파일 드롭 시 발생하는 다이얼로그
-    def __init__(self, total_files, parent=None):
+    def __init__(self, total_files: int, text: str, cancel_btn=True, parent=None):
         super().__init__(parent)
         self.setWindowTitle("File Loading")
-        self.setLabelText("파일을 로드 중입니다.")
+        self.setLabelText(text)
         self.setFixedSize(300, 100)
         self.setRange(0, total_files)
         self.setValue(0)
@@ -96,7 +125,12 @@ class LoadingDialog(QtWidgets.QProgressDialog):
             "color: rgb(255, 255, 255);" "background-color: rgb(70, 70, 70);"
         )
         self.setModal(True)
+        # 캔슬버튼 유무 설정
+        if cancel_btn is None:
+            self.setCancelButton(None)
+            self.setFixedSize(300, 80)
 
+    # progress 값을 증가시킴
     def increase_value(self):
         self.setValue(self.value() + 1)
 
@@ -130,18 +164,21 @@ class Nuke_Player(QtWidgets.QMainWindow):
         self.__text_listview = NP_view.NP_ListView()
 
         # 썸네일을 임시 저장할 상대경로 설정
-        # self.current_dir = os.path.dirname(__file__)
+        self.current_dir = os.path.dirname(os.path.realpath(__file__))
         self.home_dir = os.path.expanduser("~")
         self.__thumb_dir = os.path.join(self.home_dir, ".NP_temp")  # 숨김 상태로 생성
+        self.__sequence_dir = os.path.join(self.__thumb_dir, "sequence")
         self.__temp_file = os.path.join(
             self.__thumb_dir, "playlist.txt"
         )  # -> 플레이리스트를 작성할 임시 파일
 
         # 해당 디렉토리가 없을 경우 생성
         self.__NP_util.NP_Utils.make_dirs(self.__thumb_dir)
+        self.__NP_util.NP_Utils.make_dirs(self.__sequence_dir)
 
         self.__file_data = dict()  # {인덱스: 원본 파일 경로}의 형태로 데이터 저장
         self.__file_lst = list()  # file_data의 value값을 리스트로 저장
+        self.__dir_lst = list()
         self.__thumb_lst = list()  # 썸네일 디렉토리 내의 파일 경로를 리스트로 저장
         self.__play_lst = list()  # 선택된 파일의 경로를 인덱스로 저장
         self.__play_lst_basename = list()  # 파일 경로의 basename만 저장
@@ -486,8 +523,13 @@ class Nuke_Player(QtWidgets.QMainWindow):
             for idx, url in enumerate(urls):
                 file_path = url.toLocalFile()
                 url_str = url.toString()
+                # 드롭된 아이템이 디렉토리인 경우
+                if os.path.isdir(file_path):
+                    self.__dropped_dir(file_path)
+                    return
+
                 # 파일 유형이 영상이 맞는지 확인
-                if not self.__NP_util.NP_Utils.is_file_video(url_str):
+                elif not self.__NP_util.NP_Utils.is_file_video(url_str):
                     print(f"\033[31mERROR: '{file_path}'는 지원하지 않는 형식입니다.\033[0m")
                     ext = os.path.splitext(os.path.basename(file_path))[1]
                     self.__slot_messagebox("File Type", ext)
@@ -507,13 +549,15 @@ class Nuke_Player(QtWidgets.QMainWindow):
                     self.__file_data[idx] = file_path
 
             # 썸네일 추출 스레드 생성 및 실행
-            self.__thumb_thread = FileProcessingThread(self.__file_data, self.thumb_dir)
+            self.__thumb_thread = Extract_Tuhmbnails_Thread(
+                self.__file_data, self.__thumb_dir
+            )
             self.__thumb_thread.thumbnail_extract.connect(self.__extract_finished)
             self.__thumb_thread.finished.connect(self.__thread_stopped)
             self.__thumb_thread.start()
 
             # 로딩 다이얼로그 생성 및 실행
-            self.__loading_dialog = LoadingDialog(len(urls))
+            self.__loading_dialog = LoadingDialog(len(urls), "파일을 로드 중입니다.")
             self.__loading_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
             self.__loading_dialog.canceled.connect(
                 self.__thumb_thread.cancel
@@ -522,10 +566,92 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 self.__loading_dialog.increase_value
             )  # -> 썸네일이 추출될 때마다 진행도 업데이트
             self.__loading_dialog.show()
+            pprint.pprint(self.__file_data)
 
             event.acceptProposedAction()
         else:
             event.ignore()
+
+    def __dropped_dir(self, dir_path: str) -> None:
+        """
+        :param dir_path: 드롭된 directory의 로컬 경로
+        디렉토리가 등록된 경우, 해당 디렉토리에 이미지 시퀀스가 존재하면 이미지 시퀀스를 영상으로 변환하여
+        임시 디렉토리에 저장함
+        """
+        # 이미지 시퀀스
+        sequence = self.__NP_util.NP_Utils.is_image_sequence(dir_path)
+        # 이미지 확장자명
+        if not len(sequence):
+            return
+        ext = os.path.splitext(os.path.basename(sequence[0]))[1]
+        missing_num = self.__NP_util.NP_Utils.exist_missing_numbers(dir_path, ext)
+        # 시퀀스에 비어있는 이미지가 있는지 확인
+        if missing_num:
+            self.__slot_messagebox("Missing", missing_num)
+            return
+        # 디렉토리에 시퀀스 이외의 파일이 존재하는 지 확인
+        for file in os.listdir(dir_path):
+            if file not in sequence:
+                self.__slot_messagebox("Sequence", file)
+                return
+        # 이미 등록된 디렉토리의 경우 return
+        real_path = os.path.join(
+            self.__sequence_dir, os.path.basename(dir_path) + ".mp4"
+        )
+        if real_path in self.__file_data.values():
+            return
+
+        self.__loading_dialog_ = LoadingDialog(0, "시퀀스를 비디오로 변환 중입니다.", None)
+        self.__loading_dialog_.show()
+        self.__convert_thread = Image_2_Video_Thread(dir_path, self.__sequence_dir, ext)
+        self.__convert_thread.thread_finished.connect(self.__thread_finished)
+        self.__convert_thread.start()
+
+    def __thread_finished(self) -> None:
+        """
+        시퀀스 변환 스레드 종료 후 데이터 저장 및 썸네일 생성, UI 새로고침
+        """
+        self.__convert_thread.stop()
+        self.__convert_thread.wait()
+        self.__loading_dialog_.hide()
+
+        for file in os.listdir(self.__sequence_dir):
+            new_seq = os.path.join(self.__sequence_dir, file)
+            if not self.__file_data:
+                self.__file_data[0] = new_seq
+            else:
+                if new_seq in self.__file_data.values():
+                    continue
+                last_idx = max(self.__file_data.keys())
+                new_idx = last_idx + 1
+                self.__file_data[new_idx] = new_seq
+
+        # 썸네일 추출 스레드 생성 및 실행
+        self.__seq_thumb_thread = Extract_Tuhmbnails_Thread(
+            self.__file_data, self.__thumb_dir
+        )
+        self.__seq_thumb_thread.thumbnail_extract.connect(self.__extract_finished)
+        self.__seq_thumb_thread.finished.connect(self.__seq_thread_stopped)
+        self.__seq_thumb_thread.start()
+
+        # 로딩 다이얼로그 생성 및 실행
+        self.__seq_loading_dialog = LoadingDialog(0, "파일을 로드 중입니다.")
+        self.__seq_loading_dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+        # self.__seq_loading_dialog.canceled.connect(
+        #     self.__seq_loading_dialog_cancel
+        # )  # -> 다이얼로그를 닫을 경우 스레드 중단
+        self.__seq_loading_dialog.show()
+
+    def __seq_thread_stopped(self) -> None:
+        """
+        스레드가 종료된 후 로딩 다이얼로그 숨김, 시그널 초기화
+        """
+        self.__seq_loading_dialog.hide()
+
+        # 아이템 선택 시 시그널 발생
+        self.__item_listview.selectionModel().selectionChanged.connect(
+            self.__slot_selection_item
+        )
 
     def __thread_stopped(self) -> None:
         """
@@ -570,10 +696,10 @@ class Nuke_Player(QtWidgets.QMainWindow):
         for f_path in self.__play_lst[:]:
             # 리스트에 추가
             del_lst.append(os.path.basename(f_path))
-
             # 썸네일 삭제
             thumbs = os.path.splitext(os.path.basename(f_path))[0] + ".jpg"
             thumbs_path = os.path.join(self.__thumb_dir, thumbs)
+            dir_path = os.path.splitext(os.path.basename(f_path))[0] + ".mp4"
             # 파일이 존재하는지 검증
             if not os.path.exists(thumbs_path):
                 self.__lineEdit_debug.setText("ERROR: 삭제할 파일이 존재하지 않습니다")
@@ -581,6 +707,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
                 return
             # 썸네일 제거
             os.remove(thumbs_path)
+            os.remove(f_path)
             # 썸네일 리스트 초기화
             self.__thumb_lst.remove(thumbs_path)
             # 파일 데이터 초기화
@@ -589,7 +716,8 @@ class Nuke_Player(QtWidgets.QMainWindow):
             )
             # 파일 리스트 초기화
             self.__file_lst = list(self.__file_data.values())
-
+            # self.__dir_lst.remove(dir_path)
+            # print(self.__dir_lst)
             for idx in selected_idx:
                 # 모델 Row값 삭제
                 self.__itemview_model.removeRow(idx.row())
@@ -695,6 +823,12 @@ class Nuke_Player(QtWidgets.QMainWindow):
             box.exec_()
         elif error == "File Type":
             box.setText(f"\n'{description}'은(는) 지원하지 않는 형식입니다.")
+            box.exec_()
+        elif error == "Missing":
+            box.setText(f"이미지 시퀀스에 {description}이(가) 존재하지 않습니다.")
+            box.exec_()
+        elif error == "Sequence":
+            box.setText(f"시퀀스 이외의 파일 {description}이(가) 존재합니다.")
             box.exec_()
 
     def __slot_play_alert(self, error) -> bool:
@@ -926,12 +1060,17 @@ class Nuke_Player(QtWidgets.QMainWindow):
             self.__playing.setWindowModality(QtCore.Qt.ApplicationModal)
             self.__playing.show()
 
-    @staticmethod
-    def __exec_viewer(viewer: str):
+    # @staticmethod
+    def __exec_viewer(self, viewer: str):
         if viewer == "sv":
-            subprocess.Popen("/home/rapa/workspace/python/Nuke_player/NP_SV")
+            # subprocess.Popen("/home/rapa/workspace/python/Nuke_player/NP_SV")
+            sv = self.current_dir + "/NP_libs/player/single_viewer.py"
+            subprocess.Popen(["python3", sv])
+
         else:
-            subprocess.Popen("/home/rapa/workspace/python/Nuke_player/NP_MV")
+            # subprocess.Popen("/home/rapa/workspace/python/Nuke_player/NP_MV")
+            mv = self.current_dir + "/NP_libs/player/multiple_viewer.py"
+            subprocess.Popen(["python3", mv])
 
     def __slot_import_on_nuke(self) -> None:
         """

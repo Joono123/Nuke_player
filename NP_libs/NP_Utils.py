@@ -14,6 +14,7 @@ import os.path
 import subprocess
 import shutil
 import mimetypes
+import re
 
 sys.path.append("/home/rapa/libs_nuke")  # ffmpeg path
 import ffmpeg
@@ -165,6 +166,99 @@ class NP_Utils:
             return False
 
     @staticmethod
+    def is_file_image(file_path: str) -> str or bool:
+        """
+        :param file_path: 파일 경로
+        :return: 해당 파일이 이미지 형식이면 확장자를, 그렇지 않으면 False를 반환
+        """
+        mime_type, _ = mimetypes.guess_type(file_path)
+        # 해당 파일의 mime_type이 이미지인지 검증
+        if mime_type is not None and mime_type.startswith("image"):
+            ext = "." + mime_type.split("/")[-1]
+            if ext == ".jpeg":
+                ext = ".jpg"
+            return ext
+        else:
+            return False
+
+    @staticmethod
+    def is_image_sequence(directory_path: str) -> list:
+        """
+        :param directory_path:
+        :return: 디렉토리 내에 시퀀스 형태의 이미지 파일이 존재할 경우 정렬된 리스트를 반환
+        """
+        if not os.path.exists(directory_path):
+            raise FileNotFoundError(f"Directory {directory_path} Not Found")
+        sequence_lst = []
+
+        # 시퀀스에 부여된 패턴
+        pattern = r"\d{4}"
+
+        # 디렉토리 내의 파일
+        files = os.listdir(directory_path)
+        for file in files:
+            if re.search(pattern, file):
+                sequence_lst.append(file)
+
+        return sorted(sequence_lst)
+
+    @staticmethod
+    def images_to_video(image_dir, output_path, ext, base, fps=24):
+        output_base = base
+        output_pattern = os.path.join(output_path, output_base + ".mp4")
+        output = output_pattern.format(1)
+
+        if os.path.exists(output):
+            existing_files = [
+                f
+                for f in os.listdir(output_path)
+                if re.match(output_base + r"\d{2}\.mp4", f)
+            ]
+            if existing_files:
+                existing_files.sort(reverse=True)
+                latest_file_num = int(existing_files[0][-6:-4])
+                output = output_pattern.format(latest_file_num + 1)
+
+        input_pattern = f"{image_dir}/*{ext}"
+
+        ffmpeg.input(input_pattern, framerate=fps, pattern_type="glob").output(
+            output, codec="libx264", pix_fmt="yuv420p", r=fps
+        ).run(capture_stdout=True, capture_stderr=True)
+        return output
+
+    @staticmethod
+    def exist_missing_numbers(directory_path: str, extension: str):
+        existing_numbers = set()
+
+        # 파일명에서 숫자를 추출하는 정규표현식 패턴
+        pattern = re.compile(r"\d+")
+
+        # 디렉토리 내에 있는 파일들을 순회하며 이미지 파일의 번호를 추출
+        for filename in os.listdir(directory_path):
+            if filename.endswith(extension):
+                match = pattern.search(filename)
+                if match:
+                    file_number = int(match.group())
+                    existing_numbers.add(file_number)
+
+        # 추출한 번호 중에서 가장 작은 번호와 가장 큰 번호를 찾음
+        if existing_numbers:
+            min_number = min(existing_numbers)
+            max_number = max(existing_numbers)
+        else:
+            min_number = None
+            max_number = None
+
+        # 최소 번호부터 최대 번호까지 모든 번호를 확인하며 빠진 번호를 찾습니다.
+        missing_numbers = [
+            num
+            for num in range(min_number, max_number + 1)
+            if num not in existing_numbers
+        ]
+        if missing_numbers:
+            return missing_numbers
+
+    @staticmethod
     def delete_key_from_value(dictionary: dict, value) -> dict:
         """
         :param dictionary: 데이터를 삭제할 딕셔너리
@@ -213,6 +307,35 @@ class NP_Utils:
             print(f"\033[31m파일이 존재하지 않습니다: {video_path}\033[0m")
             return False
 
+    @staticmethod
+    def convert_sequence_to_mov(
+        sequence_dir: str, output_path: str, fps: int, resolution: str = "1920x1080"
+    ) -> bool:
+        """
+        :param sequence_dir: 이미지 시퀀스가 존재하는 디렉토리의 경로
+        :param output_path: mov 파일을 저장할 경로
+        :param fps: 출력될 mov 파일의 fps
+        :param resolution: 출력될 mov 파일의 해상도 ex)'1920x1080'
+        :return: 정상적으로 변환되면 True, 그렇지 않으면 False
+        """
+        # 디렉토리 내의 파일 정렬
+        files = sorted(os.listdir(sequence_dir))
+        file_path = os.path.join(sequence_dir, files[0])
+
+        # 옵션 설정
+        input_options = {"framerate": str(fps), "start_number": "1"}
+        output_options = {"pix_fmt": "yuv420p"}
+        input_stream = ffmpeg.input(file_path, **input_options)
+        output_stream = ffmpeg.output(input_stream, output_path, **output_options)
+
+        # 해상도 설정
+        res = resolution.split("x")
+        global_options = ["-s", "{}x{}".format(res[0], res[1])]
+
+        # 출력 시작
+        ffmpeg.run(output_stream, global_options=global_options)
+        return True
+
 
 ###########################################################################################
 
@@ -250,3 +373,10 @@ class QuestionMessageBox(QtWidgets.QMessageBox):
     def exec_(self):
         res = super().exec_()
         return res == QtWidgets.QMessageBox.Ignore
+
+
+if __name__ == "__main__":
+    np = NP_Utils()
+    # np.convert_sequence_to_mov(
+    #     "/home/rapa/Downloads/TEST", "/home/rapa/Downloads/Output", 24, "1920x1080"
+    # )
