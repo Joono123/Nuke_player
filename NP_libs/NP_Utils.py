@@ -205,7 +205,7 @@ class NP_Utils:
     @staticmethod
     def images_to_video(image_dir, output_path, ext, base, fps=24):
         output_base = base
-        output_pattern = os.path.join(output_path, output_base + ".mp4")
+        output_pattern = os.path.join(output_path, output_base + " [sequence].mp4")
         output = output_pattern.format(1)
 
         if os.path.exists(output):

@@ -3,7 +3,7 @@
 
 # author        :   Juno Park
 # created date  :   2024.03.03
-# modified date :   2024.04.02
+# modified date :   2024.03.23
 # description   :   누크에서 작업을 시작하기 전, 다양한 소스를 동시에 확인하는 것에 어려움이 있는데,
 #                   이러한 불편함을 해소하고자, 유저 친화적인 플레이어를 제작.
 #                   드래그앤드랍으로 간편하게 소스를 등록하고, 영상을 재생하며,
@@ -13,9 +13,8 @@
 #                   파일 정보는 리스트 및 딕셔너리에 들어가게 됨.
 #                   간헐적으로 point error가 발생하며 프로그램이 강제 종료됨
 #
+# 추가하고자 하는 기능 : 샷그리드와 연동하여 소스 불러오기, 소스 버전 관리,
 
-
-# TODO: closeEvent를 destroyPanel 기능으로 대체
 
 import importlib
 import os
@@ -342,17 +341,17 @@ class Nuke_Player(QtWidgets.QMainWindow):
         menu_file = menubar.addMenu("File")
         menu_help = menubar.addMenu("Help")
         self.file_1 = QtWidgets.QAction("Open in Files", self)
-        # self.file_2 = QtWidgets.QAction("Quit", self)
+        self.file_2 = QtWidgets.QAction("Quit", self)
         self.help_1 = QtWidgets.QAction("What's this?", self)
         self.help_2 = QtWidgets.QAction("Keyboard Shortcut", self)
         self.file_1.setShortcut(QtGui.QKeySequence("Ctrl+F"))
-        # self.file_2.setShortcut(QtGui.QKeySequence("Ctrl+Q"))
+        self.file_2.setShortcut(QtGui.QKeySequence("Ctrl+Q"))
         self.help_1.setShortcut(QtGui.QKeySequence("Ctrl+W"))
         self.help_2.setShortcut(QtGui.QKeySequence("Ctrl+K"))
         menu_help.addAction(self.help_1)
         menu_help.addAction(self.help_2)
         menu_file.addAction(self.file_1)
-        # menu_file.addAction(self.file_2)
+        menu_file.addAction(self.file_2)
         # menubar QSS
         menubar.setStyleSheet(
             """
@@ -452,7 +451,7 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
         # 메뉴 선택 시 시그널 발생
         self.file_1.triggered.connect(self.__slot_menu_file1)
-        # self.file_2.triggered.connect(self.close)
+        self.file_2.triggered.connect(self.close)
         self.help_1.triggered.connect(lambda: self.__slot_menu_help(0))
         self.help_2.triggered.connect(lambda: self.__slot_menu_help(1))
 
@@ -1160,35 +1159,36 @@ class Nuke_Player(QtWidgets.QMainWindow):
 
 ################################## NUKE ########################################
 
+#
+# def getNukeMainWindow():
+#     for obj in QtWidgets.QApplication.topLevelWidgets():
+#         if obj.metaObject().className() == "Foundry::UI::DockMainWindow":
+#             return obj
+#     return None
+#
+#
+# # Main 클래스 인스턴스를 반환하는 팩토리 함수
+# def createMainPanel():
+#     # Nuke의 메인 윈도우를 부모로 사용하여 Main 인스턴스 생성
+#     widget = Nuke_Player(parent=getNukeMainWindow())
+#     widget.setObjectName("MyCustomPanel")  # 옵션: 패널의 고유 이름 설정
+#     return widget
+#
+#
+# # Nuke 패널로 등록
+# panelId = "uk.co.thefoundry.Main"
+# nukescripts.panels.registerWidgetAsPanel(
+#     "createMainPanel", "My Custom Panel", panelId  # 팩토리 함수 이름  # 패널의 표시 이름
+# )
+#
+# # Nuke 메뉴에 패널 추가
+# nuke.menu("Nuke").addCommand(
+#     "Custom Tools/Nuke Player",
+#     lambda: nukescripts.panels.restorePanel(panelId),  # 패널 복원 또는 생성
+# )
 
-def getNukeMainWindow():
-    for obj in QtWidgets.QApplication.topLevelWidgets():
-        if obj.metaObject().className() == "Foundry::UI::DockMainWindow":
-            return obj
-    return None
-
-
-# Main 클래스 인스턴스를 반환하는 팩토리 함수
-def createMainPanel():
-    # Nuke의 메인 윈도우를 부모로 사용하여 Main 인스턴스 생성
-    widget = Nuke_Player(parent=getNukeMainWindow())
-    widget.setObjectName("Nuke Player")  # 옵션: 패널의 고유 이름 설정
-    return widget
-
-
-# Nuke 패널로 등록
-panelId = "uk.co.thefoundry.Main"
-nukescripts.panels.registerWidgetAsPanel(
-    "createMainPanel", "Nuke Player", panelId  # 팩토리 함수 이름  # 패널의 표시 이름
-)
-
-# Nuke 메뉴에 패널 추가
-nuke.menu("Nuke").addCommand(
-    "Custom Tools/Nuke Player", lambda: nukescripts.panels.restorePanel(panelId)
-)  # 패널 복원 또는 생성
-
-# if __name__ == "__main__":
-#     app = QtWidgets.QApplication(sys.argv)
-#     NP = Nuke_Player()
-#     NP.show()
-#     app.exec_()
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
+    NP = Nuke_Player()
+    NP.show()
+    app.exec_()

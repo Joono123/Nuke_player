@@ -1,6 +1,12 @@
 import nuke
-import nukescripts
 from PySide2 import QtWidgets
+
+
+def getNukeMainWindow():
+    for obj in QtWidgets.QApplication.topLevelWidgets():
+        if obj.metaObject().className() == "Foundry::UI::DockMainWindow":
+            return obj
+    return None
 
 
 class Test_UI(QtWidgets.QMainWindow):
@@ -21,39 +27,22 @@ class Test_UI(QtWidgets.QMainWindow):
         read_node["file"].setValue("")
 
 
-def add_custom_panel():
-    panel = nuke.Panel("Custom Panel")
-    panel.addSingleLineInput("Test Input:", "")
-    result = panel.show()
-    if result:
-        print("User input:", panel.value("Test Input:"))
+# Main 클래스 인스턴스를 반환하는 팩토리 함수
+def createMainPanel():
+    # Nuke의 메인 윈도우를 부모로 사용하여 Main 인스턴스 생성
+    widget = Test_UI(parent=getNukeMainWindow())
+    widget.setObjectName("MyCustomPanel")  # 옵션: 패널의 고유 이름 설정
+    return widget
 
 
-def add_custom_menu():
-    menubar = nuke.menu("Nuke")
-    custom_menu = menubar.addMenu("Custom Menu")
-    custom_menu.addCommand("Test Command", lambda: print("Test command executed"))
+# Nuke 패널로 등록
+panelId = "uk.co.thefoundry.Main"
+nukescripts.panels.registerWidgetAsPanel(
+    "createMainPanel", "My Custom Panel", panelId  # 팩토리 함수 이름  # 패널의 표시 이름
+)
 
-
-def create_custom_panel_and_menu():
-    add_custom_panel()
-    add_custom_menu()
-
-
-if __name__ == "__main__":
-    # Register custom panel
-    nukescripts.registerPanel("Test_UI", Test_UI)
-
-    # Add custom menu
-    add_custom_menu()
-
-    # Add toolbar button
-    toolbar = nuke.toolbar("Nodes")
-    toolbar.addCommand(
-        "Custom/Test UI",
-        "nuke.createNode('Test_UI')",
-        icon="/home/rapa/workspace/python/Nuke_player/resource/png/video-player.ico",
-    )
-
-    # Execute function to create custom panel and menu
-    create_custom_panel_and_menu()
+# Nuke 메뉴에 패널 추가
+nuke.menu("Nuke").addCommand(
+    "Custom Tools/Nuke Player",
+    lambda: nukescripts.panels.restorePanel(panelId),
+)
