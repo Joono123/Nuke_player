@@ -20,11 +20,19 @@ class Test_UI(QtWidgets.QMainWindow):
         vlay.addWidget(btn)
         w.setLayout(vlay)
         self.setCentralWidget(w)
+        self.destroyed.connect(self.__test_destroy)
+
+    def __test_destroy(self):
+        print("꺼졌다!")
 
     def slot_btn(self):
         print("test")
         read_node = nuke.createNode("Read")
         read_node["file"].setValue("")
+
+    def closeEvent(self, event):
+        print("panel Closed")
+        super().closeEvent(event)
 
 
 # Main 클래스 인스턴스를 반환하는 팩토리 함수
@@ -43,6 +51,6 @@ nukescripts.panels.registerWidgetAsPanel(
 
 # Nuke 메뉴에 패널 추가
 nuke.menu("Nuke").addCommand(
-    "Custom Tools/Nuke Player",
+    "Custom Tools/Test",
     lambda: nukescripts.panels.restorePanel(panelId),
 )

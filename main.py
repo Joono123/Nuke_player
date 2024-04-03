@@ -1161,6 +1161,13 @@ class Nuke_Player(QtWidgets.QMainWindow):
 ################################## NUKE ########################################
 
 
+# 패널의 노브 변경 이벤트 처리
+def knobChanged(knob):
+    if knob.name() == "panelCollapsed" and knob.value():
+        # 패널이 붕괴되었을 때 실행할 작업
+        print("패널이 붕괴되었습니다. 추가 작업을 수행합니다.")
+
+
 def getNukeMainWindow():
     for obj in QtWidgets.QApplication.topLevelWidgets():
         if obj.metaObject().className() == "Foundry::UI::DockMainWindow":
