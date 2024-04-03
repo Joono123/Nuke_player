@@ -3,7 +3,7 @@
 
 # author        :   Juno Park
 # created date  :   2024.03.03
-# modified date :   2024.04.02
+# modified date :   2024.04.03
 # description   :   누크에서 작업을 시작하기 전, 다양한 소스를 동시에 확인하는 것에 어려움이 있는데,
 #                   이러한 불편함을 해소하고자, 유저 친화적인 플레이어를 제작.
 #                   드래그앤드랍으로 간편하게 소스를 등록하고, 영상을 재생하며,
@@ -12,7 +12,6 @@
 # 현재 확인된 위험 :   파일을 드롭하고 썸네일을 추출하는 도중 취소하게 되면 썸네일 추출은 중단되지만,
 #                   파일 정보는 리스트 및 딕셔너리에 들어가게 됨.
 #                   간헐적으로 point error가 발생하며 프로그램이 강제 종료됨
-#
 
 
 # TODO: closeEvent를 destroyPanel 기능으로 대체
@@ -30,7 +29,8 @@ except ModuleNotFoundError as err:
 import pathlib
 import platform
 
-sys.path.append("/home/rapa/workspace/python/Nuke_player")
+# sys.path.append("/home/rapa/workspace/python/Nuke_player")
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from PySide2 import QtWidgets, QtGui, QtCore
 from view import NP_view
 from model import NP_model

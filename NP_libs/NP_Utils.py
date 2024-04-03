@@ -6,7 +6,6 @@
 # modified date :   2024.03.23
 # description   :   Nuke_player에 필요한 기능을 모아둔 유틸리티 클래스
 
-# ffmpeg 모듈 설치:   https://computingforgeeks.com/how-to-install-ffmpeg-on-centos-rhel-8/#google_vignette
 # ffmpeg-python :   pip install ffmpeg-python
 
 import sys
@@ -20,7 +19,8 @@ sys.path.append("/home/rapa/libs_nuke")  # ffmpeg path
 import ffmpeg
 from PySide2 import QtWidgets, QtGui
 
-sys.path.append("/home/rapa/workspace/python/Nuke_player")
+# sys.path.append("/home/rapa/workspace/python/Nuke_player")
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 
 class NP_Utils:
@@ -203,10 +203,23 @@ class NP_Utils:
         return sorted(sequence_lst)
 
     @staticmethod
-    def images_to_video(image_dir, output_path, ext, base, fps=24):
+    def images_to_video(
+        image_dir: str, output_path: str, ext: str, base: str, fps=24
+    ) -> str:
+        """
+        :param image_dir: 시퀀스 파일이 존재하는 디렉토리 경로
+        :param output_path: 결과물을 출력할 파일 경로
+        :param ext: 확장자명
+        :param base: 파일의 basename
+        :param fps: 변환할 영상의 fps
+        :return: output_path를 반환
+
+        이미지 시퀀스 형식의 디렉토리를 인식하여 시퀀스 파일을 영상으로 변환하는 메서드
+        """
         output_base = base
         output_pattern = os.path.join(output_path, output_base + " [sequence].mp4")
         output = output_pattern.format(1)
+        print(output)
 
         if os.path.exists(output):
             existing_files = [
@@ -220,14 +233,21 @@ class NP_Utils:
                 output = output_pattern.format(latest_file_num + 1)
 
         input_pattern = f"{image_dir}/*{ext}"
-
-        ffmpeg.input(input_pattern, framerate=fps, pattern_type="glob").output(
-            output, codec="libx264", pix_fmt="yuv420p", r=fps
-        ).run(capture_stdout=True, capture_stderr=True)
+        try:
+            ffmpeg.input(input_pattern, framerate=fps, pattern_type="glob").output(
+                output, codec="libx264", pix_fmt="yuv420p", r=fps
+            ).run(capture_stdout=True, capture_stderr=True)
+        except ffmpeg.Error as e:
+            print("ffmpeg error\n", e.stderr)
         return output
 
     @staticmethod
-    def exist_missing_numbers(directory_path: str, extension: str):
+    def exist_missing_numbers(directory_path: str, extension: str) -> None or int:
+        """
+        :param directory_path: 검사할 디렉토리
+        :param extension: 확장자명
+        :return: 시퀀스에서 비어있는 이미지가 있으면 해당 번호를, 그렇지 않으면 None을 반환
+        """
         existing_numbers = set()
 
         # 파일명에서 숫자를 추출하는 정규표현식 패턴
